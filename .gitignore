@@ -9,7 +9,7 @@ out/
 *.swp
 *.swo
 *~
-
+Build/
 # OS
 .DS_Store
 Thumbs.db

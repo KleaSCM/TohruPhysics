@@ -26,21 +26,25 @@ typedef struct {
 //  Kaede — Transform operations
 // ===========================================================================
 
+// Identity / constructors
 Transform KaedeTransformIdentity(void);
+Transform KaedeTransformMake(const Vector3 *Position, const Quaternion *Rotation);
 
-// 0063: Local → world: P' = R·P + T
+// Point conversion
 Vector3 KaedeTransformPoint(const Transform *Tfm, const Vector3 *P);
-
-// 0064: World → local: P = R⁻¹·(P' − T)
 Vector3 KaedeInverseTransformPoint(const Transform *Tfm, const Vector3 *P);
 
-// 0065: Rotate direction only (no translation)
+// Direction conversion (no translation)
 Vector3 KaedeTransformDirection(const Transform *Tfm, const Vector3 *D);
-
-// 0066: Inverse rotate direction
 Vector3 KaedeInverseTransformDirection(const Transform *Tfm, const Vector3 *D);
 
-// 0067: Combine: C = A * B
-//   Position:  C.P = A.P + A.R · B.P
-//   Rotation:  C.R = A.R · B.R
+// Combine / Inverse
 Transform KaedeTransformCombine(const Transform *A, const Transform *B);
+Transform KaedeTransformInverse(const Transform *Tfm);
+
+// Setters
+void KaedeTransformSetPosition(Transform *Tfm, const Vector3 *P);
+void KaedeTransformSetRotation(Transform *Tfm, const Quaternion *R);
+
+// LookAt
+void KaedeTransformLookAt(Transform *Tfm, const Vector3 *Target, const Vector3 *Up);

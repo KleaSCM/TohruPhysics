@@ -29,6 +29,6 @@ if(TP_BUILD_TESTS)
 	add_subdirectory(Test)
 endif()
 
-if(TP_BUILD_DEMOS)
+if(TP_BUILD_DEMOS AND EXISTS "${CMAKE_SOURCE_DIR}/Demo/CMakeLists.txt")
 	add_subdirectory(Demo)
 endif()

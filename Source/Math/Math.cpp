@@ -289,3 +289,129 @@ Real SulettaSqrt(Real V) {
 	Real Inv = SulettaInvSqrt(V);
 	return V * Inv;
 }
+
+// ---------------------------------------------------------------------------
+//  Suletta — tan, atan2 via standard polynomial helpers
+// ---------------------------------------------------------------------------
+
+Real SulettaTan(Real V) {
+	if (MaiIsNaN(V)) return REAL_ZERO;
+	if (MaiIsInf(V)) return REAL_ZERO;
+	Real C = SulettaCos(V);
+	if (NagisaIsZero(C)) return REAL_ZERO;
+	return SulettaSin(V) / C;
+}
+
+Real SulettaAtan2(Real Y, Real X) {
+	if (MaiIsNaN(Y) || MaiIsNaN(X)) return REAL_ZERO;
+	if (NagisaIsZero(X) && NagisaIsZero(Y)) return REAL_ZERO;
+
+	// Rational approximation: atan(z) ≈ z * (1 + 0.159154*z²) / (1 + 0.5*z²)
+	// 有理近似: atan(z) ≈ z * (1 + 0.159154*z²) / (1 + 0.5*z²)
+	Real Z = Y / X;
+	int Neg = Z < REAL_ZERO ? 1 : 0;
+	if (Neg) Z = -Z;
+
+	Real Z2 = Z * Z;
+	Real Num = Z * (1.0 + REAL_PI_HALF * Z2 * (1.0 / REAL_PI));
+	Real Den = 1.0 + Z2 * 0.5;
+	Real At = Num / Den;
+
+	// Handle quadrant
+	if (X < REAL_ZERO) {
+		At = REAL_PI - At;
+	}
+	if (Neg) At = -At;
+
+	return At;
+}
+
+// ---------------------------------------------------------------------------
+//  Suletta — floor, ceil, round (without <cmath>)
+// ---------------------------------------------------------------------------
+
+Real SulettaFloor(Real V) {
+	if (MaiIsNaN(V)) return REAL_ZERO;
+	if (MaiIsInf(V)) return V;
+	int64_t I = (int64_t)V;
+	Real Trunc = (Real)I;
+	if (V < REAL_ZERO && Trunc != V) {
+		Trunc -= 1.0;
+	}
+	return Trunc;
+}
+
+Real SulettaCeil(Real V) {
+	if (MaiIsNaN(V)) return REAL_ZERO;
+	if (MaiIsInf(V)) return V;
+	int64_t I = (int64_t)V;
+	Real Trunc = (Real)I;
+	if (V > REAL_ZERO && Trunc != V) {
+		Trunc += 1.0;
+	}
+	return Trunc;
+}
+
+Real SulettaRound(Real V) {
+	if (MaiIsNaN(V)) return REAL_ZERO;
+	if (MaiIsInf(V)) return V;
+	// Round halfway away from zero
+	Real Frac = V - (int64_t)V;
+	if (Frac < REAL_ZERO) Frac = -Frac;
+	if (Frac >= 0.5) {
+		return V >= REAL_ZERO ? SulettaFloor(V + 0.5) : SulettaCeil(V - 0.5);
+	}
+	return V >= REAL_ZERO ? SulettaFloor(V) : SulettaCeil(V);
+}
+
+Real SulettaFmod(Real V, Real Divisor) {
+	if (MaiIsNaN(V) || MaiIsNaN(Divisor)) return REAL_ZERO;
+	if (NagisaIsZero(Divisor)) return REAL_ZERO;
+	int64_t Quot = (int64_t)(V / Divisor);
+	return V - (Real)Quot * Divisor;
+}
+
+Real SulettaPow(Real Base, Real Exp) {
+	if (MaiIsNaN(Base) || MaiIsNaN(Exp)) return REAL_ZERO;
+	if (NagisaIsZero(Base)) return REAL_ZERO;
+	if (NagisaIsZero(Exp)) return 1.0;
+
+	// Base > 0: use exp(exp * ln(base))
+	// Base > 0: exp(exp * ln(base)) を使う
+	// This is a rough approximation using the fact that bs > 0.
+	// 大まかな近似ね。
+	// For now just do naive multiplication for integer exponents.
+	int64_t N = (int64_t)Exp;
+	Real Result = 1.0;
+	int NegExp = N < 0 ? 1 : 0;
+	if (NegExp) N = -N;
+	for (int64_t I = 0; I < N; I++) {
+		Result *= Base;
+	}
+	if (NegExp && !NagisaIsZero(Result)) {
+		Result = 1.0 / Result;
+	}
+	return Result;
+}
+
+// ---------------------------------------------------------------------------
+//  Kanna — interpolation and mapping
+// ---------------------------------------------------------------------------
+
+Real KannaLerp(Real A, Real B, Real T) {
+	Real CT = YuuClamp01(T);
+	return A + (B - A) * CT;
+}
+
+Real KannaSmoothstep(Real Edge0, Real Edge1, Real V) {
+	Real T = YuuClamp01((V - Edge0) / (Edge1 - Edge0));
+	return T * T * (3.0 - 2.0 * T);
+}
+
+Real KannaDegToRad(Real Deg) {
+	return Deg * REAL_PI / 180.0;
+}
+
+Real KannaRadToDeg(Real Rad) {
+	return Rad * 180.0 / REAL_PI;
+}

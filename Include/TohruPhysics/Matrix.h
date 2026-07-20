@@ -5,12 +5,16 @@
  * Row-major layout: Data[Row*Stride + Col].
  * 行優先レイアウト: Data[行*幅 + 列]。
  *
+ * ZII: every operation returns a valid matrix/vector.
+ * ZII: 全ての操作は有効な行列/ベクトルを返すわ。
+ *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */
 #pragma once
 
 #include <TohruPhysics/Vector3.h>
+#include <TohruPhysics/Math.h>
 
 // ---------------------------------------------------------------------------
 //  0033: Matrix3x3 — row-major, 9 elements.
@@ -32,7 +36,7 @@ typedef struct {
 //  Miorine — Matrix3x3 operations
 // ===========================================================================
 
-// 0034
+// Identity / constructors
 Matrix3x3 MiorineMatrix3x3Identity(void);
 
 Matrix3x3 MiorineMatrix3x3Make(
@@ -41,21 +45,38 @@ Matrix3x3 MiorineMatrix3x3Make(
 	Real M20, Real M21, Real M22
 );
 
-// 0035
+Matrix3x3 MiorineMatrix3x3Zero(void);
+Matrix3x3 MiorineMatrix3x3FromQuaternion(const Quaternion *Q);
+
+// Arithmetic
+Matrix3x3 MiorineMatrix3x3Add(const Matrix3x3 *A, const Matrix3x3 *B);
+Matrix3x3 MiorineMatrix3x3Sub(const Matrix3x3 *A, const Matrix3x3 *B);
 Matrix3x3 MiorineMatrix3x3Mul(const Matrix3x3 *A, const Matrix3x3 *B);
-// 0036
 Vector3   MiorineMatrix3x3VecMul(const Matrix3x3 *M, const Vector3 *V);
-// 0037
+
+// Transforms
 Matrix3x3 MiorineMatrix3x3Transpose(const Matrix3x3 *M);
-// 0038
-Matrix3x3 MiorineMatrix3x3Inverse(const Matrix3x3 *M);
 Real      MiorineMatrix3x3Determinant(const Matrix3x3 *M);
+Matrix3x3 MiorineMatrix3x3Adjugate(const Matrix3x3 *M);
+Matrix3x3 MiorineMatrix3x3Inverse(const Matrix3x3 *M);
+Real      MiorineMatrix3x3Trace(const Matrix3x3 *M);
+
+// Construction from transforms
+Matrix3x3 MiorineMatrix3x3RotationX(Real AngleRad);
+Matrix3x3 MiorineMatrix3x3RotationY(Real AngleRad);
+Matrix3x3 MiorineMatrix3x3RotationZ(Real AngleRad);
+Matrix3x3 MiorineMatrix3x3Scale(Real Sx, Real Sy, Real Sz);
+
+// Other
+Matrix3x3 MiorineMatrix3x3OuterProduct(const Vector3 *A, const Vector3 *B);
+Matrix3x3 MiorineMatrix3x3Lerp(const Matrix3x3 *A, const Matrix3x3 *B, Real T);
+int       MiorineMatrix3x3Equal(const Matrix3x3 *A, const Matrix3x3 *B);
 
 // ===========================================================================
 //  Anisphia — Matrix4x4 operations
 // ===========================================================================
 
-// 0040
+// Identity / constructors
 Matrix4x4 AnisphiaMatrix4x4Identity(void);
 
 Matrix4x4 AnisphiaMatrix4x4Make(
@@ -65,10 +86,35 @@ Matrix4x4 AnisphiaMatrix4x4Make(
 	Real M30, Real M31, Real M32, Real M33
 );
 
-// 0041
+Matrix4x4 AnisphiaMatrix4x4Zero(void);
+Matrix4x4 AnisphiaMatrix4x4Translation(const Vector3 *T);
+Matrix4x4 AnisphiaMatrix4x4RotationX(Real AngleRad);
+Matrix4x4 AnisphiaMatrix4x4RotationY(Real AngleRad);
+Matrix4x4 AnisphiaMatrix4x4RotationZ(Real AngleRad);
+Matrix4x4 AnisphiaMatrix4x4Scale(Real Sx, Real Sy, Real Sz);
+Matrix4x4 AnisphiaMatrix4x4TRS(const Vector3 *T, const Quaternion *R, const Vector3 *S);
+
+// Camera / projection
+Matrix4x4 AnisphiaMatrix4x4LookAt(const Vector3 *Eye, const Vector3 *Target, const Vector3 *Up);
+Matrix4x4 AnisphiaMatrix4x4Perspective(Real FovRad, Real Aspect, Real Near, Real Far);
+Matrix4x4 AnisphiaMatrix4x4Ortho(Real Left, Real Right, Real Bottom, Real Top, Real Near, Real Far);
+
+// Arithmetic
+Matrix4x4 AnisphiaMatrix4x4Add(const Matrix4x4 *A, const Matrix4x4 *B);
+Matrix4x4 AnisphiaMatrix4x4Sub(const Matrix4x4 *A, const Matrix4x4 *B);
 Matrix4x4 AnisphiaMatrix4x4Mul(const Matrix4x4 *A, const Matrix4x4 *B);
-// 0042
 Vector3   AnisphiaMatrix4x4VecMul(const Matrix4x4 *M, const Vector3 *V);
-// 0043
-Matrix4x4 AnisphiaMatrix4x4Inverse(const Matrix4x4 *M);
+Vector3   AnisphiaMatrix4x4VecMul4(const Matrix4x4 *M, const Vector3 *V, Real W);
+
+// Transforms
+Matrix4x4 AnisphiaMatrix4x4Transpose(const Matrix4x4 *M);
 Real      AnisphiaMatrix4x4Determinant(const Matrix4x4 *M);
+Matrix4x4 AnisphiaMatrix4x4Inverse(const Matrix4x4 *M);
+Matrix4x4 AnisphiaMatrix4x4InverseTranspose(const Matrix4x4 *M);
+
+// Extraction (assumes TRS composition)
+void      AnisphiaMatrix4x4Decompose(const Matrix4x4 *M, Vector3 *T, Quaternion *R, Vector3 *S);
+
+// Utility
+Matrix4x4 AnisphiaMatrix4x4Lerp(const Matrix4x4 *A, const Matrix4x4 *B, Real T);
+int       AnisphiaMatrix4x4Equal(const Matrix4x4 *A, const Matrix4x4 *B);

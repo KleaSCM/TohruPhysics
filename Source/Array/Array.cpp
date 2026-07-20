@@ -13,8 +13,6 @@
 //  Internal helpers
 // ---------------------------------------------------------------------------
 
-// Maximum safe capacity: Capacity * ElemSize must not overflow SIZE_MAX.
-// 最大安全容量: Capacity * ElemSize が SIZE_MAX をオーバーフローしない値よ。
 static size_t MaxCapacity(size_t ElemSize) {
 	return SIZE_MAX / ElemSize;
 }
@@ -23,8 +21,6 @@ static void ArrayGrow(Array *Arr, size_t Need) {
 	size_t NewCap = Arr->Capacity == 0 ? 4 : Arr->Capacity;
 	size_t MaxCap = MaxCapacity(Arr->ElemSize);
 	while (NewCap < Need) {
-		// Clamp to max capacity to avoid infinite loop.
-		// 無限ループ防止のため最大容量でクランプするの。
 		if (NewCap > MaxCap / 2) {
 			NewCap = MaxCap;
 			break;
@@ -35,9 +31,6 @@ static void ArrayGrow(Array *Arr, size_t Need) {
 }
 
 static void SwapElems(void *A, void *B, size_t Size) {
-	// Small-size fast path via uint64_t; fall back to byte loop.
-	// NOTE (KleaSCM) memcpy works for trivially-copyable types.
-	// 小さなサイズは uint64_t で高速パス、それ以外はバイトループ。
 	size_t N = Size;
 	while (N >= 8) {
 		uint64_t Tmp;
@@ -59,11 +52,7 @@ static void SwapElems(void *A, void *B, size_t Size) {
 }
 
 // ---------------------------------------------------------------------------
-//  Introsort: quicksort with depth limit → heapsort fallback.
-//  イントロソート: 深さ制限付きクイックソート → ヒープソートフォールバック。
-//
-//  Hoare partition handles equal elements without O(n²) degradation.
-//  Hoare分割は同値要素でもO(n²)劣化しないの。
+//  Introsort
 // ---------------------------------------------------------------------------
 
 static void SiftDown(char *Arr, size_t Count, size_t Root, size_t ElemSize,
@@ -95,11 +84,9 @@ static void HeapSort(char *Arr, size_t Count, size_t ElemSize,
 	}
 }
 
-// Returns the split index J; recurse on [Lo..J] and [J+1..Hi].
 static size_t HoarePartition(char *Arr, size_t Lo, size_t Hi, size_t ElemSize,
 		int (*Cmp)(const void *, const void *))
 {
-	// Median-of-3 into Arr[Lo].
 	size_t Mid = Lo + (Hi - Lo) / 2;
 	if (Cmp(Arr + Lo * ElemSize, Arr + Mid * ElemSize) > 0)
 		SwapElems(Arr + Lo * ElemSize, Arr + Mid * ElemSize, ElemSize);
@@ -128,11 +115,7 @@ static void IntroSortRec(char *Arr, size_t Count, size_t ElemSize,
 		HeapSort(Arr, Count, ElemSize, Cmp);
 		return;
 	}
-
-	// Hoare partition gives J where all [Lo..J] ≤ pivot and [J+1..Hi] ≥ pivot.
 	size_t J = HoarePartition(Arr, 0, Count - 1, ElemSize, Cmp);
-
-	// Recurse on smaller partition first to limit stack depth.
 	size_t LeftCount = J + 1;
 	size_t RightCount = Count - LeftCount;
 	if (LeftCount < RightCount) {
@@ -154,8 +137,6 @@ void TiltyArrayInit(Arena *A, Array *Arr, size_t ElemSize, size_t InitCap) {
 	Arr->ElemSize = ElemSize;
 
 	if (InitCap == 0) InitCap = 4;
-	// Clamp to max capacity.
-	// 最大容量でクランプするの。
 	size_t MaxCap = MaxCapacity(ElemSize);
 	if (InitCap > MaxCap) InitCap = MaxCap;
 	size_t Bytes = InitCap * ElemSize;
@@ -169,8 +150,6 @@ void TiltyArrayInit(Arena *A, Array *Arr, size_t ElemSize, size_t InitCap) {
 }
 
 void TiltyArrayDestroy(Array *Arr) {
-	// Arena owns memory — no individual free needed.
-	// アリーナがメモリを管理してるから、個別の解放は不要ね。
 	Arr->MemArena = NULL;
 	Arr->Data = NULL;
 	Arr->Length = 0;
@@ -198,7 +177,6 @@ void *TiltyArrayPush(Array *Arr, const void *Elem) {
 			return (void *)TohruZeroBlock;
 		}
 	}
-
 	void *Slot = (char *)Arr->Data + Arr->Length * Arr->ElemSize;
 	if (Elem) {
 		memcpy(Slot, Elem, Arr->ElemSize);
@@ -215,11 +193,40 @@ void *TiltyArrayPop(Array *Arr) {
 	return (char *)Arr->Data + Arr->Length * Arr->ElemSize;
 }
 
+void TiltyArrayInsert(Array *Arr, size_t Index, const void *Elem) {
+	if (Index > Arr->Length) Index = Arr->Length;
+	if (Arr->Length >= Arr->Capacity) {
+		ArrayGrow(Arr, Arr->Length + 1);
+		if (Arr->Data == TohruZeroBlock) return;
+	}
+	// Shift elements right.
+	char *Pos = (char *)Arr->Data + Index * Arr->ElemSize;
+	size_t ToMove = Arr->Length - Index;
+	if (ToMove > 0) {
+		memmove(Pos + Arr->ElemSize, Pos, ToMove * Arr->ElemSize);
+	}
+	memcpy(Pos, Elem, Arr->ElemSize);
+	Arr->Length++;
+}
+
+void TiltyArrayRemove(Array *Arr, size_t Index) {
+	if (Index >= Arr->Length) return;
+	// Shift elements left.
+	char *Pos = (char *)Arr->Data + Index * Arr->ElemSize;
+	size_t ToMove = Arr->Length - Index - 1;
+	if (ToMove > 0) {
+		memmove(Pos, Pos + Arr->ElemSize, ToMove * Arr->ElemSize);
+	}
+	Arr->Length--;
+}
+
+void TiltyArrayRemoveAt(Array *Arr, size_t Index) {
+	TiltyArrayRemove(Arr, Index);
+}
+
 void TiltyArrayReserve(Array *Arr, size_t NewCap) {
 	if (NewCap <= Arr->Capacity) return;
 
-	// Clamp to max capacity to prevent overflow.
-	// オーバーフロー防止のため最大容量でクランプするの。
 	size_t MaxCap = MaxCapacity(Arr->ElemSize);
 	if (NewCap > MaxCap) NewCap = MaxCap;
 	if (NewCap <= Arr->Capacity) return;
@@ -234,6 +241,53 @@ void TiltyArrayReserve(Array *Arr, size_t NewCap) {
 
 	Arr->Data = NewData;
 	Arr->Capacity = NewCap;
+}
+
+void TiltyArrayResize(Array *Arr, size_t NewLength) {
+	if (NewLength > Arr->Capacity) {
+		ArrayGrow(Arr, NewLength);
+		if (Arr->Data == TohruZeroBlock) return;
+	}
+	Arr->Length = NewLength;
+}
+
+void TiltyArrayShrinkToFit(Array *Arr) {
+	if (Arr->Length >= Arr->Capacity || Arr->Capacity == 0) return;
+	size_t MaxCap = MaxCapacity(Arr->ElemSize);
+	size_t NewCap = Arr->Length > 0 ? Arr->Length : 4;
+	if (NewCap > MaxCap) NewCap = MaxCap;
+
+	size_t Bytes = NewCap * Arr->ElemSize;
+	void *NewData = KobayashiAlloc(Arr->MemArena, Bytes);
+	if (NewData == TohruZeroBlock) return;
+
+	if (Arr->Data && Arr->Data != TohruZeroBlock && Arr->Length > 0) {
+		memcpy(NewData, Arr->Data, Arr->Length * Arr->ElemSize);
+	}
+
+	Arr->Data = NewData;
+	Arr->Capacity = NewCap;
+}
+
+void TiltyArrayClear(Array *Arr) {
+	Arr->Length = 0;
+}
+
+void *TiltyArrayFront(const Array *Arr) {
+	return TiltyArrayGet(Arr, 0);
+}
+
+void *TiltyArrayBack(const Array *Arr) {
+	if (Arr->Length == 0) return (void *)TohruZeroBlock;
+	return (char *)Arr->Data + (Arr->Length - 1) * Arr->ElemSize;
+}
+
+void *TiltyArrayData(const Array *Arr) {
+	return Arr->Data;
+}
+
+int TiltyArrayIsEmpty(const Array *Arr) {
+	return Arr->Length == 0;
 }
 
 int TiltyArraySearch(const Array *Arr, const void *Key,
@@ -296,14 +350,21 @@ void TiltyArraySort(Array *Arr,
 {
 	if (Arr->Length < 2) return;
 
-	// Depth limit = 2 * floor(log2(n)) → heapsort fallback prevents O(n²).
-	// 深さ制限 = 2 * floor(log2(n)) → ヒープソートフォールバックでO(n²)を防止。
 	size_t N = Arr->Length;
 	size_t DepthLimit = 0;
 	while (N > 1) { N >>= 1; DepthLimit++; }
 	DepthLimit *= 2;
 
 	IntroSortRec((char *)Arr->Data, Arr->Length, Arr->ElemSize, Cmp, DepthLimit);
+}
+
+void TiltyArrayForEach(const Array *Arr,
+		void (*Fn)(void *Elem, void *Ctx), void *Ctx)
+{
+	for (size_t I = 0; I < Arr->Length; I++) {
+		void *Elem = (char *)Arr->Data + I * Arr->ElemSize;
+		Fn(Elem, Ctx);
+	}
 }
 
 // ===========================================================================
@@ -316,7 +377,9 @@ void TiltyGrid2DInit(Arena *A, Grid2D *G,
 	G->Width = Width;
 	G->Height = Height;
 	TiltyArrayInit(A, &G->Backing, ElemSize, Width * Height);
-	G->Backing.Length = Width * Height;
+	if (G->Backing.Data != TohruZeroBlock) {
+		G->Backing.Length = Width * Height;
+	}
 }
 
 void *TiltyGrid2DGet(const Grid2D *G, size_t X, size_t Y) {
@@ -331,4 +394,15 @@ void *TiltyGrid2DGetFlat(const Grid2D *G, size_t Index) {
 		return (void *)TohruZeroBlock;
 	}
 	return TiltyArrayGet(&G->Backing, Index);
+}
+
+void TiltyGrid2DSet(const Grid2D *G, size_t X, size_t Y, const void *Elem) {
+	void *Dst = TiltyGrid2DGet(G, X, Y);
+	if (Dst != TohruZeroBlock) {
+		memcpy(Dst, Elem, G->Backing.ElemSize);
+	}
+}
+
+void TiltyGrid2DClear(Grid2D *G) {
+	TiltyArrayClear(&G->Backing);
 }

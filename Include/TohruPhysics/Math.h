@@ -75,6 +75,22 @@ int64_t YuuWrap64(int64_t V, int64_t Lo, int64_t Hi);
 
 Real SulettaSin(Real V);
 Real SulettaCos(Real V);
+Real SulettaTan(Real V);
+Real SulettaAtan2(Real Y, Real X);
 Real SulettaInvSqrt(Real V);
 Real SulettaSqrt(Real V);
 Real SulettaAcos(Real V);
+Real SulettaFloor(Real V);
+Real SulettaCeil(Real V);
+Real SulettaRound(Real V);
+Real SulettaFmod(Real V, Real Divisor);
+Real SulettaPow(Real Base, Real Exp);
+
+/**
+ * Kanna — interpolation and mapping utilities
+ * 補間とマッピングユーティリティ
+ */
+Real KannaLerp(Real A, Real B, Real T);
+Real KannaSmoothstep(Real Edge0, Real Edge1, Real V);
+Real KannaDegToRad(Real Deg);
+Real KannaRadToDeg(Real Rad);

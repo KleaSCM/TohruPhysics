@@ -150,6 +150,14 @@ void *KobayashiAlloc(Arena *A, size_t Size) {
 	return Ptr;
 }
 
+void *KobayashiAllocZeroed(Arena *A, size_t Size) {
+	void *Ptr = KobayashiAlloc(A, Size);
+	if (Ptr != TohruZeroBlock) {
+		memset(Ptr, 0, Size);
+	}
+	return Ptr;
+}
+
 void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align) {
 	if (A == NULL || Size == 0) {
 		return (void *)TohruZeroBlock;
@@ -208,6 +216,14 @@ size_t ElmaArenaUsed(Arena *A) {
 
 size_t ElmaArenaRemaining(Arena *A) {
 	return A->Capacity - A->Offset;
+}
+
+size_t ElmaArenaSnapshot(Arena *A) {
+	return A->Offset;
+}
+
+void ElmaArenaRollback(Arena *A, size_t Snapshot) {
+	A->Offset = Snapshot;
 }
 
 // ---------------------------------------------------------------------------

@@ -69,6 +69,12 @@ void TohruArenaDestroy(Arena *A);
 void *KobayashiAlloc(Arena *A, size_t Size);
 
 /**
+ * Kobayashi — allocate zeroed bytes. Never returns null.
+ * ゼロ埋めバイト列を確保するの。絶対にnullにならないわ。
+ */
+void *KobayashiAllocZeroed(Arena *A, size_t Size);
+
+/**
  * Kobayashi — allocate with explicit alignment. Never null.
  * 指定したアラインメントで確保するの。絶対にnullにならないわ。
  */
@@ -98,6 +104,18 @@ void ElmaArenaClear(Arena *A);
  */
 size_t ElmaArenaUsed(Arena *A);
 size_t ElmaArenaRemaining(Arena *A);
+
+/**
+ * Elma — save a snapshot for rollback (O(1), just records offset).
+ * ロールバック用のスナップショットを保存(O(1)、オフセットだけ記録)。
+ */
+size_t ElmaArenaSnapshot(Arena *A);
+
+/**
+ * Elma — rollback to a snapshot (O(1), restores offset, does NOT free memory).
+ * スナップショットにロールバック(O(1)、オフセット復元、メモリ解放はしない)。
+ */
+void ElmaArenaRollback(Arena *A, size_t Snapshot);
 
 /**
  * Ilulu — pointer / offset conversion.

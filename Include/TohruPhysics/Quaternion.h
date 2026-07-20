@@ -5,6 +5,9 @@
  * Layout: Data[4] = (X, Y, Z, W).
  * レイアウト: Data[4] = (X, Y, Z, W)。
  *
+ * ZII: every operation returns a valid quaternion.
+ * ZII: 全ての操作は有効なクォータニオンを返すわ。
+ *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */
@@ -25,31 +28,37 @@ typedef struct {
 //  Euphyllia — Quaternion operations
 // ===========================================================================
 
-// 0045
+// Identity / constructors
 Quaternion EuphylliaQuaternionIdentity(void);
 Quaternion EuphylliaQuaternionMake(Real X, Real Y, Real Z, Real W);
+Quaternion EuphylliaQuaternionFromAxisAngle(const Vector3 *Axis, Real AngleRad);
+Quaternion EuphylliaQuaternionFromToRotation(const Vector3 *From, const Vector3 *To);
+Quaternion EuphylliaQuaternionLookRotation(const Vector3 *Direction, const Vector3 *Up);
 
-// 0052
+// Arithmetic
 Real EuphylliaQuaternionDot(const Quaternion *A, const Quaternion *B);
 Real EuphylliaQuaternionLengthSq(const Quaternion *Q);
-
-// 0046
+Real EuphylliaQuaternionLength(const Quaternion *Q);
 Quaternion EuphylliaQuaternionNormalize(const Quaternion *Q);
-
-// 0047
 Quaternion EuphylliaQuaternionMul(const Quaternion *A, const Quaternion *B);
+Quaternion EuphylliaQuaternionConjugate(const Quaternion *Q);
+Quaternion EuphylliaQuaternionInverse(const Quaternion *Q);
 
-// 0048
+// Conversion
 Matrix3x3 EuphylliaQuaternionToMatrix3x3(const Quaternion *Q);
-
-// 0049
 Quaternion EuphylliaMatrix3x3ToQuaternion(const Matrix3x3 *M);
+void      EuphylliaQuaternionToEulerAngles(const Quaternion *Q, Real *Roll, Real *Pitch, Real *Yaw);
 
-// 0050
+// Interpolation
+Quaternion EuphylliaQuaternionLerp(const Quaternion *A, const Quaternion *B, Real T);
+Quaternion EuphylliaQuaternionNLerp(const Quaternion *A, const Quaternion *B, Real T);
 Quaternion EuphylliaQuaternionSlerp(const Quaternion *A, const Quaternion *B, Real T);
 
-// 0051
-Quaternion EuphylliaQuaternionConjugate(const Quaternion *Q);
+// Rotation
+Vector3    EuphylliaQuaternionRotateVector(const Quaternion *Q, const Vector3 *V);
 
-// Rotate a vector by this quaternion: v' = q * v * q⁻¹
-Vector3 EuphylliaQuaternionRotateVector(const Quaternion *Q, const Vector3 *V);
+// Queries
+Real EuphylliaQuaternionAngle(const Quaternion *A, const Quaternion *B);
+void EuphylliaQuaternionAxis(const Quaternion *Q, Vector3 *Axis, Real *AngleRad);
+int  EuphylliaQuaternionIsIdentity(const Quaternion *Q);
+int  EuphylliaQuaternionEqual(const Quaternion *A, const Quaternion *B);

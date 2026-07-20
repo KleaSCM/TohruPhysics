@@ -6,6 +6,7 @@
  * Email: KleaSCM@gmail.com
  */
 #include <TohruPhysics/Geometry.h>
+#include <TohruPhysics/Math.h>
 #include <TohruPhysics/Quaternion.h>
 
 // ===========================================================================
