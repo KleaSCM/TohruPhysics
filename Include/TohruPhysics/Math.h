@@ -77,3 +77,4 @@ Real SulettaSin(Real V);
 Real SulettaCos(Real V);
 Real SulettaInvSqrt(Real V);
 Real SulettaSqrt(Real V);
+Real SulettaAcos(Real V);

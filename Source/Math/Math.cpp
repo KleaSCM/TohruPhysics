@@ -240,6 +240,45 @@ Real SulettaInvSqrt(Real V) {
 	return X;
 }
 
+// ---------------------------------------------------------------------------
+//  Suletta — acos via domain-split asin.
+//  領域分割asinによるacosね。
+// ---------------------------------------------------------------------------
+
+// 9th-order asin approximation.
+// 9次asin近似よ。
+static Real AsinApprox(Real T) {
+	Real T2 = T * T;
+	Real T3 = T * T2;
+	Real T5 = T3 * T2;
+	Real T7 = T5 * T2;
+	Real T9 = T7 * T2;
+	return T
+		+ T3 * (1.0 / 6.0)
+		+ T5 * (3.0 / 40.0)
+		+ T7 * (5.0 / 112.0)
+		+ T9 * (35.0 / 1152.0);
+}
+
+Real SulettaAcos(Real V) {
+	if (MaiIsNaN(V)) return REAL_ZERO;
+	if (MaiIsInf(V)) return REAL_ZERO;
+	if (V <= -1.0) return REAL_PI;
+	if (V >=  1.0) return REAL_ZERO;
+
+	// Domain split: asin argument ≤ sqrt(0.5) for best accuracy.
+	// 領域分割: 最高精度のためasin引数は sqrt(0.5) 以下とするの。
+	if (V < REAL_ZERO) {
+		Real T = (1.0 + V) * 0.5;
+		Real S = SulettaSqrt(T);
+		return REAL_PI - 2.0 * AsinApprox(S);
+	} else {
+		Real T = (1.0 - V) * 0.5;
+		Real S = SulettaSqrt(T);
+		return 2.0 * AsinApprox(S);
+	}
+}
+
 Real SulettaSqrt(Real V) {
 	if (MaiIsNaN(V)) return REAL_ZERO;
 	if (MaiIsInf(V)) return REAL_ZERO;

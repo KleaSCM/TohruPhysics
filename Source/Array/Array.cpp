@@ -7,14 +7,28 @@
  */
 #include <TohruPhysics/Array.h>
 #include <string.h>
+#include <stdint.h>
 
 // ---------------------------------------------------------------------------
 //  Internal helpers
 // ---------------------------------------------------------------------------
 
+// Maximum safe capacity: Capacity * ElemSize must not overflow SIZE_MAX.
+// 最大安全容量: Capacity * ElemSize が SIZE_MAX をオーバーフローしない値よ。
+static size_t MaxCapacity(size_t ElemSize) {
+	return SIZE_MAX / ElemSize;
+}
+
 static void ArrayGrow(Array *Arr, size_t Need) {
 	size_t NewCap = Arr->Capacity == 0 ? 4 : Arr->Capacity;
+	size_t MaxCap = MaxCapacity(Arr->ElemSize);
 	while (NewCap < Need) {
+		// Clamp to max capacity to avoid infinite loop.
+		// 無限ループ防止のため最大容量でクランプするの。
+		if (NewCap > MaxCap / 2) {
+			NewCap = MaxCap;
+			break;
+		}
 		NewCap *= 2;
 	}
 	TiltyArrayReserve(Arr, NewCap);
@@ -45,37 +59,89 @@ static void SwapElems(void *A, void *B, size_t Size) {
 }
 
 // ---------------------------------------------------------------------------
-//  Quick sort internals: median-of-3 pivot, Lomuto partition.
-//  クイックソート内部: 3点中央値ピボット、Lomuto分割。
+//  Introsort: quicksort with depth limit → heapsort fallback.
+//  イントロソート: 深さ制限付きクイックソート → ヒープソートフォールバック。
+//
+//  Hoare partition handles equal elements without O(n²) degradation.
+//  Hoare分割は同値要素でもO(n²)劣化しないの。
 // ---------------------------------------------------------------------------
 
-static void QuickSortRec(void *Base, size_t Count, size_t ElemSize,
+static void SiftDown(char *Arr, size_t Count, size_t Root, size_t ElemSize,
 		int (*Cmp)(const void *, const void *))
 {
-	if (Count <= 1) return;
-
-	// Median-of-3 pivot selection.
-	// 3点中央値ピボット選択。
-	size_t Lo = 0, Hi = Count - 1, Mid = Count / 2;
-	char *Arr = (char *)Base;
-	if (Cmp(Arr + Lo * ElemSize, Arr + Mid * ElemSize) > 0) SwapElems(Arr + Lo * ElemSize, Arr + Mid * ElemSize, ElemSize);
-	if (Cmp(Arr + Lo * ElemSize, Arr + Hi * ElemSize) > 0) SwapElems(Arr + Lo * ElemSize, Arr + Hi * ElemSize, ElemSize);
-	if (Cmp(Arr + Mid * ElemSize, Arr + Hi * ElemSize) > 0) SwapElems(Arr + Mid * ElemSize, Arr + Hi * ElemSize, ElemSize);
-	// Move pivot to end.
-	SwapElems(Arr + Mid * ElemSize, Arr + Hi * ElemSize, ElemSize);
-
-	char *Pivot = Arr + Hi * ElemSize;
-	size_t I = 0;
-	for (size_t J = 0; J < Hi; J++) {
-		if (Cmp(Arr + J * ElemSize, Pivot) <= 0) {
-			SwapElems(Arr + I * ElemSize, Arr + J * ElemSize, ElemSize);
-			I++;
-		}
+	while (1) {
+		size_t Largest = Root;
+		size_t L = 2 * Root + 1;
+		size_t R = L + 1;
+		if (L < Count && Cmp(Arr + L * ElemSize, Arr + Largest * ElemSize) > 0)
+			Largest = L;
+		if (R < Count && Cmp(Arr + R * ElemSize, Arr + Largest * ElemSize) > 0)
+			Largest = R;
+		if (Largest == Root) break;
+		SwapElems(Arr + Root * ElemSize, Arr + Largest * ElemSize, ElemSize);
+		Root = Largest;
 	}
-	SwapElems(Arr + I * ElemSize, Pivot, ElemSize);
+}
 
-	if (I > 0) QuickSortRec(Base, I, ElemSize, Cmp);
-	QuickSortRec(Arr + (I + 1) * ElemSize, Count - I - 1, ElemSize, Cmp);
+static void HeapSort(char *Arr, size_t Count, size_t ElemSize,
+		int (*Cmp)(const void *, const void *))
+{
+	if (Count < 2) return;
+	size_t I = Count / 2;
+	while (I > 0) { I--; SiftDown(Arr, Count, I, ElemSize, Cmp); }
+	for (size_t End = Count; End > 1; End--) {
+		SwapElems(Arr, Arr + (End - 1) * ElemSize, ElemSize);
+		SiftDown(Arr, End - 1, 0, ElemSize, Cmp);
+	}
+}
+
+// Returns the split index J; recurse on [Lo..J] and [J+1..Hi].
+static size_t HoarePartition(char *Arr, size_t Lo, size_t Hi, size_t ElemSize,
+		int (*Cmp)(const void *, const void *))
+{
+	// Median-of-3 into Arr[Lo].
+	size_t Mid = Lo + (Hi - Lo) / 2;
+	if (Cmp(Arr + Lo * ElemSize, Arr + Mid * ElemSize) > 0)
+		SwapElems(Arr + Lo * ElemSize, Arr + Mid * ElemSize, ElemSize);
+	if (Cmp(Arr + Lo * ElemSize, Arr + Hi * ElemSize) > 0)
+		SwapElems(Arr + Lo * ElemSize, Arr + Hi * ElemSize, ElemSize);
+	if (Cmp(Arr + Mid * ElemSize, Arr + Hi * ElemSize) > 0)
+		SwapElems(Arr + Mid * ElemSize, Arr + Hi * ElemSize, ElemSize);
+	SwapElems(Arr + Lo * ElemSize, Arr + Mid * ElemSize, ElemSize);
+
+	char *Pivot = Arr + Lo * ElemSize;
+	size_t I = Lo - 1;
+	size_t J = Hi + 1;
+	while (1) {
+		do { I++; } while (Cmp(Arr + I * ElemSize, Pivot) < 0);
+		do { J--; } while (Cmp(Arr + J * ElemSize, Pivot) > 0);
+		if (I >= J) return J;
+		SwapElems(Arr + I * ElemSize, Arr + J * ElemSize, ElemSize);
+	}
+}
+
+static void IntroSortRec(char *Arr, size_t Count, size_t ElemSize,
+		int (*Cmp)(const void *, const void *), size_t DepthLimit)
+{
+	if (Count < 2) return;
+	if (DepthLimit == 0) {
+		HeapSort(Arr, Count, ElemSize, Cmp);
+		return;
+	}
+
+	// Hoare partition gives J where all [Lo..J] ≤ pivot and [J+1..Hi] ≥ pivot.
+	size_t J = HoarePartition(Arr, 0, Count - 1, ElemSize, Cmp);
+
+	// Recurse on smaller partition first to limit stack depth.
+	size_t LeftCount = J + 1;
+	size_t RightCount = Count - LeftCount;
+	if (LeftCount < RightCount) {
+		IntroSortRec(Arr, LeftCount, ElemSize, Cmp, DepthLimit - 1);
+		IntroSortRec(Arr + (J + 1) * ElemSize, RightCount, ElemSize, Cmp, DepthLimit - 1);
+	} else {
+		IntroSortRec(Arr + (J + 1) * ElemSize, RightCount, ElemSize, Cmp, DepthLimit - 1);
+		IntroSortRec(Arr, LeftCount, ElemSize, Cmp, DepthLimit - 1);
+	}
 }
 
 // ===========================================================================
@@ -88,6 +154,10 @@ void TiltyArrayInit(Arena *A, Array *Arr, size_t ElemSize, size_t InitCap) {
 	Arr->ElemSize = ElemSize;
 
 	if (InitCap == 0) InitCap = 4;
+	// Clamp to max capacity.
+	// 最大容量でクランプするの。
+	size_t MaxCap = MaxCapacity(ElemSize);
+	if (InitCap > MaxCap) InitCap = MaxCap;
 	size_t Bytes = InitCap * ElemSize;
 
 	Arr->Data = KobayashiAlloc(A, Bytes);
@@ -146,6 +216,12 @@ void *TiltyArrayPop(Array *Arr) {
 }
 
 void TiltyArrayReserve(Array *Arr, size_t NewCap) {
+	if (NewCap <= Arr->Capacity) return;
+
+	// Clamp to max capacity to prevent overflow.
+	// オーバーフロー防止のため最大容量でクランプするの。
+	size_t MaxCap = MaxCapacity(Arr->ElemSize);
+	if (NewCap > MaxCap) NewCap = MaxCap;
 	if (NewCap <= Arr->Capacity) return;
 
 	size_t Bytes = NewCap * Arr->ElemSize;
@@ -218,8 +294,16 @@ int TiltyArrayContains(const Array *Arr, const void *Key,
 void TiltyArraySort(Array *Arr,
 		int (*Cmp)(const void *, const void *))
 {
-	if (Arr->Length <= 1) return;
-	QuickSortRec(Arr->Data, Arr->Length, Arr->ElemSize, Cmp);
+	if (Arr->Length < 2) return;
+
+	// Depth limit = 2 * floor(log2(n)) → heapsort fallback prevents O(n²).
+	// 深さ制限 = 2 * floor(log2(n)) → ヒープソートフォールバックでO(n²)を防止。
+	size_t N = Arr->Length;
+	size_t DepthLimit = 0;
+	while (N > 1) { N >>= 1; DepthLimit++; }
+	DepthLimit *= 2;
+
+	IntroSortRec((char *)Arr->Data, Arr->Length, Arr->ElemSize, Cmp, DepthLimit);
 }
 
 // ===========================================================================

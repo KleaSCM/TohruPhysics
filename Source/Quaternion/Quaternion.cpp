@@ -7,23 +7,6 @@
  */
 #include <TohruPhysics/Quaternion.h>
 
-// ---------------------------------------------------------------------------
-//  Internal: fast acos via asin identity.
-//  asin恒等式による高速acos近似ね。
-// ---------------------------------------------------------------------------
-static Real AcosApprox(Real X) {
-	if (X <= -1.0) return REAL_PI;
-	if (X >=  1.0) return REAL_ZERO;
-
-	Real T = (1.0 - X) * 0.5;
-	Real S = SulettaSqrt(T);
-	Real S2 = S * S;
-	Real S4 = S2 * S2;
-	Real AsinApprox = S + S * S2 * (1.0 / 6.0)
-		+ S * S4 * (3.0 / 40.0);
-	return 2.0 * AsinApprox;
-}
-
 Quaternion EuphylliaQuaternionIdentity(void) {
 	Quaternion Q;
 	Q.Data[0] = REAL_ZERO;
@@ -158,7 +141,7 @@ Quaternion EuphylliaQuaternionSlerp(const Quaternion *A, const Quaternion *B, Re
 
 	Real K0, K1;
 	if (CosOmega < 0.9999) {
-		Real Omega = AcosApprox(CosOmega);
+		Real Omega = SulettaAcos(CosOmega);
 		Real InvSinOmega = 1.0 / SulettaSin(Omega);
 		K0 = SulettaSin((1.0 - T) * Omega) * InvSinOmega;
 		K1 = SulettaSin(T * Omega) * InvSinOmega;
