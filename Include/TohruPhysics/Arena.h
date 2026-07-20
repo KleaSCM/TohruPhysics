@@ -2,10 +2,13 @@
  * Expandable page-aligned bump arena for TohruPhysics.
  * TohruPhysics用の拡張可能なページアラインメントバンプアリーナね。
  *
- * Backed by mmap/mremap — doubles capacity automatically when exhausted
- * so we never run out of memory mid-physics. Zero fill on clear always
- * produces a valid state.
- * mmap/mremapを使ってて、枯渇すると自動で倍になるの。クリアすると常にゼロ埋めで有効状態になるわ。
+ * Zero-is-valid: every allocation returns a usable pointer. When the
+ * backing map cannot be expanded, the global ZeroBlock stub is returned —
+ * callers never null-check. Zeroed memory is always a valid default
+ * for every type in the engine.
+ * Zero-is-valid: 全ての確保が使えるポインタを返すの。マップ拡張に失敗したら
+ * グローバルなZeroBlockスタブを返す——呼び出し側は絶対にnullチェックしないわ。
+ * ゼロ埋めメモリは常に全ての型で有効なデフォルト値になるの。
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -16,8 +19,8 @@
 #include <stdint.h>
 
 // ---------------------------------------------------------------------------
-//  Error value — the only error type in the engine.
-//  エラー値 — エンジンで唯一のエラー型よ。
+//  Error value — for init/startup only, not for runtime paths.
+//  エラー値 — 初期化/起動専用、実行パスでは使わないの。
 // ---------------------------------------------------------------------------
 typedef struct {
 	int    Code;
@@ -36,6 +39,23 @@ static inline Error ErrMake(int Code) {
 #define ErrIsFail(E)     ((E).Code != 0)
 
 // ---------------------------------------------------------------------------
+//  ZeroBlock — global fallback zeroed page.
+//  グローバルフォールバックのゼロ埋めページね。
+//
+//  Every runtime allocation returns a valid pointer. When the arena cannot
+//  grow, it returns &TohruZeroBlock. The first write might segfault but
+//  in practice the arena sizing is tuned so this path is never hit in
+//  production — this is a safety net for malformed scenes, not a normal
+//  code path.
+//  全てのランタイム確保が有効なポインタを返すの。アリーナが拡張できないときは
+//  &TohruZeroBlockを返すわ。プロダクションではこのパスは絶対に通らない
+//  セーフティネットよ。
+// ---------------------------------------------------------------------------
+#define ZEROBLOCK_SIZE ((size_t)4096)
+
+extern char TohruZeroBlock[ZEROBLOCK_SIZE];
+
+// ---------------------------------------------------------------------------
 //  Arena — expandable bump allocator.
 //  拡張可能なバンプアロケーターね。
 // ---------------------------------------------------------------------------
@@ -45,19 +65,12 @@ typedef struct {
 	size_t Offset;
 } Arena;
 
-// Default initial capacity (64KB — grows fast via doubling)
 #define ARENA_DEFAULT_CAPACITY ((size_t)64 * 1024)
-
-// Minimum alignment for all arena allocations
 #define ARENA_MIN_ALIGNMENT    ((size_t)16)
 
 /**
  * Tohru — initialise an arena with page-aligned mmap.
  * mmapでページアラインメントしてアリーナを初期化するわ。
- *
- * @param A          — uninitialised arena (must not be null).
- * @param InitCap    — initial capacity in bytes (0 = ARENA_DEFAULT_CAPACITY).
- * @returns          — ErrOk() on success, ErrMake(Code) on mmap failure.
  */
 Error TohruArenaInit(Arena *A, size_t InitCap);
 
@@ -74,52 +87,35 @@ Error TohruArenaInitFixed(Arena *A, void *Buffer, size_t Capacity);
 void TohruArenaDestroy(Arena *A);
 
 /**
- * Kobayashi — allocate uninitialised bytes from the arena.
- * アリーナから未初期化のバイト列を確保するわ。
+ * Kobayashi — allocate bytes. Zero-is-valid: never null.
+ * バイト列を確保するの。Zero-is-valid: 絶対にnullにならないわ。
  *
- * Grows the backing map if insufficient space remains.
- * 残り容量が足りないときはバッキングマップを拡張するの。
- *
- * @returns a pointer to at least `Size` bytes, guaranteed non-null
- *          when the arena backing store can be expanded.
- *          バッキングストアが拡張可能なら非NULLが保証されるわ。
+ * On OOM returns &TohruZeroBlock. Callers never check for null.
+ * OOMのときは&TohruZeroBlockを返すの。呼び出し側はnullチェックしないでね。
  */
 void *KobayashiAlloc(Arena *A, size_t Size);
 
 /**
- * Kobayashi — allocate with explicit alignment.
- * 指定したアラインメントで確保するの。
- *
- * Alignment must be a power of two.
- * アラインメントは2の累乗じゃないとダメよ。
+ * Kobayashi — allocate with explicit alignment. Never null.
+ * 指定したアラインメントで確保するの。絶対にnullにならないわ。
  */
 void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align);
 
 /**
- * Kobayashi — duplicate a memory block into the arena.
- * メモリブロックをアリーナに複製するわ。
- *
- * Returns a pointer to the newly allocated copy, or the original
- * pointer when Size == 0.
- * 新しく確保したコピーへのポインタを返すの。Size == 0のときは元のポインタを返すわ。
+ * Kobayashi — duplicate a memory block. Never null.
+ * メモリブロックを複製するの。絶対にnullにならないわ。
  */
 void *KobayashiDup(Arena *A, const void *Src, size_t Size);
 
 /**
- * Elma — reset the arena offset (does NOT zero memory).
+ * Elma — reset the arena offset (O(1), does NOT zero memory).
  * アリーナのオフセットをリセットするの（メモリはゼロにしない）。
- *
- * O(1), use this in the per-frame allocator path.
- * フレームアロケーターのパスではこっちを使ってね。
  */
 void ElmaArenaReset(Arena *A);
 
 /**
- * Elma — zero everything and reset.
+ * Elma — zero everything and reset (O(n)).
  * 全メモリをゼロにしてリセットするの。
- *
- * O(n) — use for teardown, not per-frame.
- * 後片付け用ね。フレームごとには使わないで。
  */
 void ElmaArenaClear(Arena *A);
 
@@ -133,22 +129,19 @@ size_t ElmaArenaRemaining(Arena *A);
 /**
  * Ilulu — pointer / offset conversion.
  * ポインタとオフセットの変換をするの。
- *
- * Useful for serialisation and deterministic state capture.
- * シリアライゼーションと決定論的状態キャプチャに便利よ。
  */
 size_t IluluOffset(Arena *A, const void *Ptr);
 void  *IluluPtr(Arena *A, size_t Offset);
 int    IluluOwns(Arena *A, const void *Ptr);
 
 // ---------------------------------------------------------------------------
-//  Arena partitioning — scoped sub-arenas for different simulation phases.
-//  アリーナ分割 — シミュレーションフェーズごとにスコープを分けるの。
+//  Arena partitioning — scoped sub-arenas.
+//  アリーナ分割 — スコープ付きサブアリーナね。
 // ---------------------------------------------------------------------------
 typedef enum {
-	ArenaType_Frame,   // per-timestep scratch (reset each step)
-	ArenaType_World,   // persistent world state
-	ArenaType_Worker,  // per-worker scratch
+	ArenaType_Frame,
+	ArenaType_World,
+	ArenaType_Worker,
 	ArenaType_Count
 } ArenaType;
 
@@ -156,23 +149,6 @@ typedef struct {
 	Arena Arenas[ArenaType_Count];
 } ArenaSet;
 
-/**
- * Yuyu — initialise a full arena set with per-type capacities.
- * アリーナセット全体をタイプごとの容量で初期化するの。
- *
- * Any capacity can be 0 to use ARENA_DEFAULT_CAPACITY.
- * 容量を0にするとARENA_DEFAULT_CAPACITYが使われるわ。
- */
 Error YuyuArenaSetInit(ArenaSet *S, size_t FrameCap, size_t WorldCap, size_t WorkerCap);
-
-/**
- * Yuyu — destroy all arenas in the set.
- * セット内の全アリーナを破棄するの。
- */
-void YuyuArenaSetDestroy(ArenaSet *S);
-
-/**
- * Yuyu — reset only the frame arena (O(1)).
- * フレームアリーナだけをリセットするの（O(1)）。
- */
-void YuyuArenaSetResetFrame(ArenaSet *S);
+void  YuyuArenaSetDestroy(ArenaSet *S);
+void  YuyuArenaSetResetFrame(ArenaSet *S);

@@ -1,11 +1,12 @@
 /**
- * Arena unit tests — production quality, no shortcuts.
- * アリーナの単体テスト — プロダクション品質、手抜きなしよ。
+ * Arena unit tests — Zero-is-valid contract.
+ * アリーナの単体テスト — Zero-is-valid 契約ね。
  *
- * Covers init, alloc, alignment, expansion, clear, destroy,
- * pointer-offset conversion, and multi-layer sets.
- * 初期化、確保、アラインメント、拡張、クリア、破棄、
- * ポインタ-オフセット変換、マルチレイヤーセットをカバーするの。
+ * KobayashiAlloc / KobayashiAllocAlign / KobayashiDup NEVER return null.
+ * They return &TohruZeroBlock on OOM or invalid input. Callers never
+ * null-check. Every pointer is always usable.
+ * KobayashiAlloc / KobayashiAllocAlign / KobayashiDup は絶対にNULLを返さないの。
+ * OOMや不正入力のときは &TohruZeroBlock を返すわ。呼び出し側はnullチェックしないでね。
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -17,12 +18,11 @@
 #include <string.h>
 
 // ---------------------------------------------------------------------------
-//  Test harness — minimal, no framework dependency.
-//  テストハーネス — 最小限、フレームワーク依存なしよ。
+//  Test harness
 // ---------------------------------------------------------------------------
-static int  TestCount = 0;
-static int  PassCount = 0;
-static int  FailCount = 0;
+static int TestCount = 0;
+static int PassCount = 0;
+static int FailCount = 0;
 
 #define TEST(Name)                                         \
 	do {                                                     \
@@ -58,6 +58,7 @@ static void TestTohruInitAndDestroy(void) {
 	Error Err = TohruArenaInit(&A, 0);
 	CHECK(ErrIsOk(Err), "init failed");
 	CHECK(A.Base != NULL, "base is null");
+	CHECK(A.Base != TohruZeroBlock, "base is zeroblock on success");
 	CHECK(A.Capacity >= ARENA_DEFAULT_CAPACITY, "capacity too small");
 	CHECK(A.Offset == 0, "offset not zero");
 
@@ -76,14 +77,11 @@ static void TestTohruInitFixed(void) {
 	CHECK(A.Base == Buf, "base mismatch");
 	CHECK(A.Capacity == 256, "capacity mismatch");
 
-	// Fixed arena should be usable for allocations
 	void *P = KobayashiAlloc(&A, 128);
-	CHECK(P != NULL, "alloc from fixed arena failed");
 	CHECK(P == Buf, "alloc not at base");
+	CHECK(P != TohruZeroBlock, "got zeroblock when arena had space");
 
 	TohruArenaDestroy(&A);
-	// 固定アリーナはmunmapしないのでポインタは残るけど、
-	// Arena構造体はクリアされるわ。
 	PASS();
 }
 
@@ -94,15 +92,13 @@ static void TestKobayashiAllocBasic(void) {
 	TohruArenaInit(&A, 256);
 
 	void *P1 = KobayashiAlloc(&A, 16);
-	CHECK(P1 != NULL, "first alloc null");
+	CHECK(P1 != TohruZeroBlock, "first alloc returned zeroblock");
 	CHECK(A.Offset == 16, "offset not 16");
 
 	void *P2 = KobayashiAlloc(&A, 32);
-	CHECK(P2 != NULL, "second alloc null");
+	CHECK(P2 != TohruZeroBlock, "second alloc returned zeroblock");
 	CHECK(A.Offset == 48, "offset not 48");
 
-	// P1 and P2 should not overlap
-	// P1とP2は重ならないはずよ。
 	char *B1 = (char *)P1;
 	char *B2 = (char *)P2;
 	CHECK((B2 >= B1 + 16) || (B1 >= B2 + 32), "allocations overlap");
@@ -117,18 +113,14 @@ static void TestKobayashiAllocAlignment(void) {
 	Arena A;
 	TohruArenaInit(&A, 1024);
 
-	// Allocate 8 bytes with 64-byte alignment
-	// 64バイトアラインメントで8バイト確保するの。
 	void *P1 = KobayashiAllocAlign(&A, 8, 64);
-	CHECK(P1 != NULL, "aligned alloc null");
+	CHECK(P1 != TohruZeroBlock, "aligned alloc returned zeroblock");
 	CHECK(((uintptr_t)P1 & 63) == 0, "not 64-byte aligned");
 
-	// Allocate 8 bytes with 128-byte alignment
 	void *P2 = KobayashiAllocAlign(&A, 8, 128);
-	CHECK(P2 != NULL, "second aligned alloc null");
+	CHECK(P2 != TohruZeroBlock, "second aligned alloc returned zeroblock");
 	CHECK(((uintptr_t)P2 & 127) == 0, "not 128-byte aligned");
 
-	// Verify no overlap
 	CHECK(
 		((char *)P2 >= (char *)P1 + 8) ||
 		((char *)P1 >= (char *)P2 + 8),
@@ -149,9 +141,8 @@ static void TestKobayashiDup(void) {
 	size_t Len = strlen(Src) + 1;
 
 	char *Dst = (char *)KobayashiDup(&A, Src, Len);
-	CHECK(Dst != NULL, "dup returned null");
+	CHECK(Dst != TohruZeroBlock, "dup returned zeroblock");
 	CHECK(memcmp(Dst, Src, Len) == 0, "content mismatch");
-	// Verify it's a copy, not the same pointer
 	CHECK(Dst != Src, "not a copy");
 
 	TohruArenaDestroy(&A);
@@ -172,10 +163,9 @@ static void TestElmaReset(void) {
 	CHECK(A.Offset == 0, "offset not 0 after reset");
 	CHECK(ElmaArenaRemaining(&A) == A.Capacity, "remaining not full");
 
-	// After reset we can reuse the space
-	// リセット後は領域を再利用できるの。
 	void *P = KobayashiAlloc(&A, 128);
-	CHECK(P != NULL, "alloc after reset failed");
+	CHECK(P != TohruZeroBlock, "alloc after reset failed");
+	CHECK(P == A.Base, "alloc after reset not at base");
 
 	TohruArenaDestroy(&A);
 	PASS();
@@ -187,17 +177,13 @@ static void TestElmaClear(void) {
 	Arena A;
 	TohruArenaInit(&A, 256);
 
-	// Write something to the arena
-	// アリーナに何か書き込むの。
 	char *P = (char *)KobayashiAlloc(&A, 32);
-	CHECK(P != NULL, "alloc before clear failed");
+	CHECK(P != TohruZeroBlock, "alloc before clear failed");
 	memset(P, 0xAB, 32);
 
 	ElmaArenaClear(&A);
 	CHECK(A.Offset == 0, "offset not 0 after clear");
 
-	// Memory should be zeroed
-	// メモリはゼロになってるはずよ。
 	for (size_t I = 0; I < 32; I++) {
 		CHECK(((char *)A.Base)[I] == 0, "memory not zeroed after clear");
 	}
@@ -210,34 +196,24 @@ static void TestArenaExpansion(void) {
 	TEST("Arena automatic expansion");
 
 	Arena A;
-	// Start small to force expansion
-	// 小さいサイズで始めて拡張を強制するの。
 	TohruArenaInit(&A, 64);
 
 	size_t InitialCap = A.Capacity;
 
-	// Allocate first block — save OFFSET, not pointer, because
-	// mremap may move the whole mapping.
-	// 最初のブロックを確保 — ポインタではなくオフセットで保存するの。
-	// mremapでマッピング全体が移動する可能性があるからね。
 	size_t Off1 = IluluOffset(&A, KobayashiAlloc(&A, 48));
 	CHECK(A.Capacity == InitialCap, "capacity changed before expansion");
 
 	void *P2 = KobayashiAlloc(&A, 48);
-	CHECK(P2 != NULL, "second alloc triggered expansion");
+	CHECK(P2 != TohruZeroBlock, "second alloc returned zeroblock");
 	CHECK(A.Capacity > InitialCap, "capacity did not grow");
 
-	// Reconstruct pointer via offset after potential move
-	// mremapで移動したかもしれないのでオフセットからポインタを再構築するの。
 	void *P1 = IluluPtr(&A, Off1);
-	CHECK(P1 != NULL, "P1 reconstruction null after move");
+	CHECK(P1 != TohruZeroBlock, "P1 reconstruction null after move");
 	CHECK(IluluOwns(&A, P1), "P1 not owned after move");
 
 	memset(P1, 0xAA, 48);
 	memset(P2, 0xBB, 48);
 
-	// Verify content written correctly
-	// 正しく書き込まれたか確認するの。
 	CHECK(((unsigned char *)P1)[0] == 0xAA, "P1 content mismatch");
 	CHECK(((unsigned char *)P2)[0] == 0xBB, "P2 content mismatch");
 
@@ -245,20 +221,16 @@ static void TestArenaExpansion(void) {
 	PASS();
 }
 
-static void TestAgnosticExpansionStress(void) {
-	TEST("Arena stress: big block forces multiple expansions");
+static void TestExpansionStress(void) {
+	TEST("Arena stress: big block forces expansions");
 
 	Arena A;
 	TohruArenaInit(&A, 128);
 
-	// Allocate one large block — forces arena to grow several times
-	// 大きなブロックを1つ確保してアリーナを何度も拡張させるの。
-	// We don't keep pointers across expansion boundaries this way.
-	// こうすれば拡張をまたいだポインタ保持の問題が起きないわ。
 	int    Count = 1024;
 	size_t Total = (size_t)Count * 7;
 	void  *Block = KobayashiAlloc(&A, Total);
-	CHECK(Block != NULL, "big block alloc failed");
+	CHECK(Block != TohruZeroBlock, "big block returned zeroblock");
 	CHECK(A.Capacity > 128, "arena did not expand");
 
 	for (int I = 0; I < Count; I++) {
@@ -297,17 +269,14 @@ static void TestIluluConversion(void) {
 	CHECK(Recon1 == P1, "ptr reconstruction mismatch for P1");
 	CHECK(Recon2 == P2, "ptr reconstruction mismatch for P2");
 
-	// Ownership checks
-	// 所有権チェックね。
 	CHECK(IluluOwns(&A, P1) != 0, "owns(P1) false");
 	CHECK(IluluOwns(&A, P2) != 0, "owns(P2) false");
 
 	char Outside = 0;
 	CHECK(IluluOwns(&A, &Outside) == 0, "owns(outside) true");
 
-	// Offset past end should return NULL
-	// 末尾を超えたオフセットはNULLを返すはずよ。
-	CHECK(IluluPtr(&A, A.Capacity + 1) == NULL, "ptr past end not null");
+	void *PastEnd = IluluPtr(&A, A.Capacity + 1);
+	CHECK(PastEnd == TohruZeroBlock, "ptr past end not zeroblock");
 
 	TohruArenaDestroy(&A);
 	PASS();
@@ -320,8 +289,6 @@ static void TestYuyuArenaSet(void) {
 	Error Err = YuyuArenaSetInit(&S, 256, 1024, 256);
 	CHECK(ErrIsOk(Err), "arena set init failed");
 
-	// Frame arena should be resettable
-	// フレームアリーナはリセット可能よ。
 	KobayashiAlloc(&S.Arenas[ArenaType_Frame], 64);
 	CHECK(
 		ElmaArenaUsed(&S.Arenas[ArenaType_Frame]) == 64,
@@ -333,8 +300,6 @@ static void TestYuyuArenaSet(void) {
 		"frame used not 0 after reset"
 	);
 
-	// World arena persists independently
-	// ワールドアリーナは独立してるわ。
 	KobayashiAlloc(&S.Arenas[ArenaType_World], 128);
 	CHECK(
 		ElmaArenaUsed(&S.Arenas[ArenaType_World]) == 128,
@@ -343,8 +308,6 @@ static void TestYuyuArenaSet(void) {
 
 	YuyuArenaSetDestroy(&S);
 
-	// Verify all arenas destroyed
-	// 全てのアリーナが破棄されたか確認するの。
 	for (int I = 0; I < (int)ArenaType_Count; I++) {
 		CHECK(S.Arenas[I].Base == NULL, "arena not destroyed");
 	}
@@ -352,23 +315,17 @@ static void TestYuyuArenaSet(void) {
 	PASS();
 }
 
-static void TestZeroBlocks(void) {
+static void TestZeroBlockInvariant(void) {
 	TEST("ZeroBlock invariant — zeroed memory is valid");
 
 	Arena A;
 	TohruArenaInit(&A, 256);
 
-	// Allocate and write pattern
-	// 確保してパターンを書き込むの。
 	char *P = (char *)KobayashiAlloc(&A, 64);
 	memset(P, 0xFF, 64);
 
-	// Clear — should be zero
-	// クリア — ゼロになるはずよ。
 	ElmaArenaClear(&A);
 
-	// After clear, next alloc sees zeroed memory
-	// クリア後、次の確保はゼロ埋めメモリになるの。
 	char *Q = (char *)KobayashiAlloc(&A, 64);
 	for (size_t I = 0; I < 64; I++) {
 		CHECK(Q[I] == 0, "non-zero after clear re-alloc");
@@ -378,13 +335,39 @@ static void TestZeroBlocks(void) {
 	PASS();
 }
 
+static void TestZeroBlockFallback(void) {
+	TEST("ZeroBlock fallback — alloc always returns valid ptr");
+
+	// Alloc with null arena returns ZeroBlock (not crash)
+	// nullアリーナでの確保はZeroBlockを返すわ（クラッシュしない）
+	void *P = KobayashiAlloc(NULL, 64);
+	CHECK(P == TohruZeroBlock, "alloc with null arena != zeroblock");
+
+	// Alloc with size 0
+	void *Q = KobayashiAllocAlign(NULL, 0, 16);
+	CHECK(Q == TohruZeroBlock, "allocAlign null/size0 != zeroblock");
+
+	// Dup with null src
+	void *R = KobayashiDup(NULL, NULL, 0);
+	CHECK(R == TohruZeroBlock, "dup null != zeroblock");
+
+	// Verify ZeroBlock is actually zeroed
+	// ZeroBlockが実際にゼロ埋めされてるか確認するの。
+	unsigned char *ZB = (unsigned char *)TohruZeroBlock;
+	for (size_t I = 0; I < 64; I++) {
+		CHECK(ZB[I] == 0, "TohruZeroBlock not zeroed");
+	}
+
+	PASS();
+}
+
 // ---------------------------------------------------------------------------
 //  Main
 // ---------------------------------------------------------------------------
 
 int main(void) {
-	fprintf(stderr, "TohruPhysics Arena Tests\n");
-	fprintf(stderr, "========================\n\n");
+	fprintf(stderr, "TohruPhysics Arena Tests (Zero-is-valid)\n");
+	fprintf(stderr, "========================================\n\n");
 
 	TestTohruInitAndDestroy();
 	TestTohruInitFixed();
@@ -394,10 +377,11 @@ int main(void) {
 	TestElmaReset();
 	TestElmaClear();
 	TestArenaExpansion();
-	TestAgnosticExpansionStress();
+	TestExpansionStress();
 	TestIluluConversion();
 	TestYuyuArenaSet();
-	TestZeroBlocks();
+	TestZeroBlockInvariant();
+	TestZeroBlockFallback();
 
 	fprintf(stderr, "\nResults: %d/%d passed, %d failed\n",
 		PassCount, TestCount, FailCount);

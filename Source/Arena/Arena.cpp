@@ -1,12 +1,11 @@
 /**
- * Expandable arena backing store — mmap/mremap growth.
- * 拡張可能なアリーナのバッキングストア — mmap/mremap で拡張するの。
+ * Expandable arena backing store — mmap/mremap growth with ZeroBlock fallback.
+ * 拡張可能なアリーナのバッキングストア — mmap/mremap で拡張、ZeroBlockフォールバック。
  *
- * We use anonymous mmap for the initial allocation and mremap
- * (with MREMAP_MAYMOVE) when the arena runs out. This keeps
- * all physics data in contiguous virtual memory.
- * 最初は anonymous mmap で確保して、足りなくなったら mremap で拡張するわ。
- * これで物理データが仮想メモリ上で連続したままになるの。
+ * Zero-is-valid: KobayashiAlloc/KobayashiAllocAlign never return null.
+ * On mremap failure they return &TohruZeroBlock. Callers never check.
+ * Zero-is-valid: KobayashiAlloc/KobayashiAllocAlign は絶対にnullを返さないの。
+ * mremap が失敗したら &TohruZeroBlock を返すわ。呼び出し側はチェックしないでね。
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -18,10 +17,15 @@
 #include <sys/mman.h>
 
 // ---------------------------------------------------------------------------
+//  TohruZeroBlock — one zeroed page in .bss.
+//  .bss 上のゼロ埋めページよ。
+// ---------------------------------------------------------------------------
+char TohruZeroBlock[ZEROBLOCK_SIZE] = {0};
+
+// ---------------------------------------------------------------------------
 //  Internal helpers
 // ---------------------------------------------------------------------------
 
-// システムページサイズをキャッシュしておくの。
 static size_t GetPageSize(void) {
 	static size_t PageSz = 0;
 	if (!PageSz) {
@@ -30,20 +34,17 @@ static size_t GetPageSize(void) {
 	return PageSz;
 }
 
-// リサイズ後の最小アリーナサイズね。
 static size_t GrowCapacity(size_t Current) {
 	size_t Grown = Current * 2;
 	size_t Min = ARENA_DEFAULT_CAPACITY;
 	return Grown > Min ? Grown : Min;
 }
 
-// ページ境界に切り上げるの。
 static size_t RoundUpPage(size_t Sz) {
 	size_t PS = GetPageSize();
 	return (Sz + PS - 1) & ~(PS - 1);
 }
 
-// 現在のマップ済みサイズ（ページ境界）を返すわ。
 static size_t MappedSize(Arena *A) {
 	return RoundUpPage(A->Capacity);
 }
@@ -68,6 +69,12 @@ Error TohruArenaInit(Arena *A, size_t InitCap) {
 	);
 
 	if (Base == MAP_FAILED) {
+		// NOTE (KleaSCM) Init failure IS possible (OOM, ulimit).
+		// Initialise as a fixed arena on the ZeroBlock as fallback.
+		// 初期化失敗はありえるの。フォールバックとしてZeroBlockで固定アリーナにするわ。
+		A->Base = TohruZeroBlock;
+		A->Capacity = ZEROBLOCK_SIZE;
+		A->Offset = 0;
 		return ErrMake(-2);
 	}
 
@@ -93,8 +100,11 @@ void TohruArenaDestroy(Arena *A) {
 		return;
 	}
 
-	size_t Mapped = MappedSize(A);
-	munmap(A->Base, Mapped);
+	//  ZeroBlock のときは munmap しないわ。
+	if (A->Base != (void *)TohruZeroBlock) {
+		size_t Mapped = MappedSize(A);
+		munmap(A->Base, Mapped);
+	}
 
 	A->Base = NULL;
 	A->Capacity = 0;
@@ -102,19 +112,16 @@ void TohruArenaDestroy(Arena *A) {
 }
 
 // ---------------------------------------------------------------------------
-//  Kobayashi — allocation
+//  Kobayashi — allocation (zero-is-valid: never null)
 // ---------------------------------------------------------------------------
 
-// Try to grow the arena by `Needed` bytes.
-// アリーナをNeededバイト分拡張しようとするの。
-static Error EnsureSpace(Arena *A, size_t Needed) {
+// Try to grow. Returns 0 on success, -1 on failure (caller uses ZeroBlock).
+static int EnsureSpace(Arena *A, size_t Needed) {
 	size_t Remaining = A->Capacity - A->Offset;
 	if (Needed <= Remaining) {
-		return ErrOk();
+		return 0;
 	}
 
-	// Keep doubling until we have room.
-	// 容量が足りるまで倍にしていくわ。
 	size_t NewCap = A->Capacity;
 	while (NewCap - A->Offset < Needed) {
 		NewCap = GrowCapacity(NewCap);
@@ -123,27 +130,25 @@ static Error EnsureSpace(Arena *A, size_t Needed) {
 	size_t OldMapped = MappedSize(A);
 	size_t NewMapped = RoundUpPage(NewCap);
 
-	// Try mremap first — keeps virtual address contiguous.
-	// まず mremap を試すの — 仮想アドレスが連続したままになるわ。
 	void *NewBase = mremap(A->Base, OldMapped, NewMapped, MREMAP_MAYMOVE);
 	if (NewBase == MAP_FAILED) {
-		return ErrMake(-3);
+		return -1;
 	}
 
 	A->Base = NewBase;
 	A->Capacity = NewCap;
-	return ErrOk();
+	return 0;
 }
 
 void *KobayashiAlloc(Arena *A, size_t Size) {
 	if (!A || Size == 0) {
-		return NULL;
+		return (void *)TohruZeroBlock;
 	}
 
-	// NOTE (KleaSCM) EnsureSpace grows the arena transparently —
-	// callers never see a full arena.
-	if (ErrIsFail(EnsureSpace(A, Size))) {
-		return NULL;
+	if (EnsureSpace(A, Size) != 0) {
+		// Zero-is-valid: return the global stub instead of NULL.
+		// 呼び出し側は常に有効なポインタを得るの。
+		return (void *)TohruZeroBlock;
 	}
 
 	void *Ptr = (void *)((char *)A->Base + A->Offset);
@@ -153,11 +158,9 @@ void *KobayashiAlloc(Arena *A, size_t Size) {
 
 void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align) {
 	if (!A || Size == 0) {
-		return NULL;
+		return (void *)TohruZeroBlock;
 	}
 
-	// Alignment must be power of two.
-	// アラインメントは2の累乗じゃないとね。
 	if ((Align & (Align - 1)) != 0) {
 		Align = ARENA_MIN_ALIGNMENT;
 	}
@@ -165,13 +168,12 @@ void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align) {
 		Align = ARENA_MIN_ALIGNMENT;
 	}
 
-	// Align the current offset up.
 	uintptr_t Cur = (uintptr_t)A->Base + A->Offset;
 	uintptr_t Aligned = (Cur + Align - 1) & ~(Align - 1);
 	size_t    Padding = (size_t)(Aligned - Cur);
 
-	if (ErrIsFail(EnsureSpace(A, Padding + Size))) {
-		return NULL;
+	if (EnsureSpace(A, Padding + Size) != 0) {
+		return (void *)TohruZeroBlock;
 	}
 
 	A->Offset += Padding;
@@ -182,13 +184,11 @@ void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align) {
 
 void *KobayashiDup(Arena *A, const void *Src, size_t Size) {
 	if (!A || !Src || Size == 0) {
-		return NULL;
+		return (void *)TohruZeroBlock;
 	}
 
 	void *Dst = KobayashiAlloc(A, Size);
-	if (Dst) {
-		memcpy(Dst, Src, Size);
-	}
+	memcpy(Dst, Src, Size);
 	return Dst;
 }
 
@@ -207,10 +207,6 @@ void ElmaArenaClear(Arena *A) {
 		return;
 	}
 
-	// NOTE (KleaSCM) Zero-fill guarantees the ZeroBlock invariant:
-	// every bit pattern produced by the arena is a valid default state.
-	// ゼロフィルは ZeroBlock 不変条件を保証するの：
-	// アリーナが生成するすべてのビットパターンが有効なデフォルト状態になるわ。
 	memset(A->Base, 0, A->Capacity);
 	A->Offset = 0;
 }
@@ -236,7 +232,7 @@ size_t IluluOffset(Arena *A, const void *Ptr) {
 
 void *IluluPtr(Arena *A, size_t Offset) {
 	if (!A || Offset >= A->Capacity) {
-		return NULL;
+		return (void *)TohruZeroBlock;
 	}
 	return (void *)((char *)A->Base + Offset);
 }
@@ -246,7 +242,7 @@ int IluluOwns(Arena *A, const void *Ptr) {
 		return 0;
 	}
 	const char *Base = (const char *)A->Base;
-	const char *End  = Base + A->Offset; // NOTE: only check used range
+	const char *End  = Base + A->Offset;
 	const char *P    = (const char *)Ptr;
 	return (P >= Base && P < End) ? 1 : 0;
 }
@@ -262,14 +258,10 @@ Error YuyuArenaSetInit(ArenaSet *S, size_t FrameCap, size_t WorldCap, size_t Wor
 
 	Error Err;
 
-	// Frame: per-timestep scratch, aggressively sized.
-	// フレーム: タイムステップごとのスクラッチ、積極的に確保するの。
 	Err = TohruArenaInit(&S->Arenas[ArenaType_Frame],
 		FrameCap > 0 ? FrameCap : ARENA_DEFAULT_CAPACITY);
 	if (ErrIsFail(Err)) return Err;
 
-	// World: persistent, largest.
-	// ワールド: 永続的、一番大きいの。
 	Err = TohruArenaInit(&S->Arenas[ArenaType_World],
 		WorldCap > 0 ? WorldCap : ARENA_DEFAULT_CAPACITY * 8);
 	if (ErrIsFail(Err)) {
@@ -277,8 +269,6 @@ Error YuyuArenaSetInit(ArenaSet *S, size_t FrameCap, size_t WorldCap, size_t Wor
 		return Err;
 	}
 
-	// Worker: per-thread scratch.
-	// ワーカー: スレッドごとのスクラッチね。
 	Err = TohruArenaInit(&S->Arenas[ArenaType_Worker],
 		WorkerCap > 0 ? WorkerCap : ARENA_DEFAULT_CAPACITY);
 	if (ErrIsFail(Err)) {

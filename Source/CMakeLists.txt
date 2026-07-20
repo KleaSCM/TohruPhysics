@@ -12,7 +12,7 @@ target_sources(TohruPhysics PRIVATE
 	Arena/Arena.cpp
 )
 
-# Math subsystem (coming next)
-# target_sources(TohruPhysics PRIVATE
-# 	Math/Math.cpp
-# )
+# Math subsystem — scalar foundations
+target_sources(TohruPhysics PRIVATE
+	Math/Math.cpp
+)

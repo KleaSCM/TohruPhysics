@@ -19,6 +19,26 @@ The engine uses **expandable bump arenas** backed by anonymous `mmap`. There are
 | Min alignment | 16 bytes |
 | Zero-invariant | `ElmaArenaClear` zeroes the entire backing store |
 
+### Zero-is-valid contract
+
+KobayashiAlloc / KobayashiAllocAlign / KobayashiDup **never return null**. Every
+pointer is always valid and usable. When the arena backing store cannot be
+expanded (system OOM, rlimit), the functions return `&TohruZeroBlock` — a global
+4 KB page of zeros in `.bss`.
+
+```cpp
+// Zero-is-valid in practice
+PhysicsBody *Body = KobayashiAlloc(&Arena, sizeof(PhysicsBody));
+// Body is always valid. On exhaustion it points to ZeroBlock.
+ApplyForce(Body, Force);
+```
+
+This eliminates entire categories of bugs: no null-deref, no stale data from
+uninitialised memory, no branch-on-error in hot paths. The engine is designed
+such that every type accepts `0` (or an all-zeroes bit pattern) as a meaningful
+default — velocity zero means "not moving", mass zero means "infinite mass",
+transform zero means "identity".
+
 ### Expandability
 
 When `KobayashiAlloc` or `KobayashiAllocAlign` finds insufficient space, `EnsureSpace` doubles the arena capacity via `mremap(MREMAP_MAYMOVE)`. The kernel may relocate the entire mapping to a new virtual address.

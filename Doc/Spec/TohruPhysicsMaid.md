@@ -53,11 +53,64 @@ Simplicity, minimum code, and readability are optimisation goals only. They must
 
 ---
 
-## 3. Error Handling
+## 3. Error Handling — Zero-is-valid
 
-- **No exceptions.** `throw`, `try/catch`, `panic!` are all forbidden.
-- **Return errors as values**: `Result`, `std::expected`, Go `error`, etc.
-- **Never ignore errors.** No `.unwrap()` or `_ = err` without explicit justification.
+**Every function returns a usable value. Always. No exceptions.**
+
+- `throw`, `try/catch`, `panic!` are all **forbidden**.
+- `Result`, `std::expected`, `Option`, `std::optional`, Go `(T, error)` — **forbidden in runtime paths**.
+- No `.unwrap()`, no `if (Ptr == NULL)`, no null checks, no error branches.
+- Startup/init functions may return Error (e.g. `mmap` OOM is real). Runtime never.
+- **Runtime functions return 0 / null / empty / stub** — the caller uses it directly.
+
+### The rule
+
+```cpp
+// ❌ WRONG — error path, null check, branch
+PhysicsBody *Body = GetBody(Id);
+if (!Body) { /* error handling */ return; }
+ApplyForce(Body, Force);
+
+// ✅ RIGHT — Zero-is-valid: always a usable pointer
+PhysicsBody *Body = GetBody(Id);
+// Body is valid even for unknown Id — points to zeroed stub.
+ApplyForce(Body, Force);
+```
+
+### Examples across domains
+
+```cpp
+// Math: edge cases return zero
+Vector3 N = Vector3Normalize(ZeroVector3);    // → {0,0,0}  not NaN
+Matrix3 M = Matrix3x3Inverse(SingularMatrix);  // → zero matrix
+float D = Vector3Distance(A, A);               // → 0
+
+// Lookup: miss returns zero record
+Body = GetBody(9999);  // → &ZeroBody (mass=0, rest=0, no force)
+Constraint = GetConstraint(9999);  // → &ZeroConstraint
+
+// Allocation: OOM returns global stub
+void *P = ArenaAlloc(&A, 1000000);   // → &ZeroBlock on OOM
+
+// IO: failure returns empty written/read count
+size_t N = FileRead(Buf, Size);  // → 0 on error, not -1
+```
+
+### Why
+
+- **Zero branches in hot paths** — no mispredictions, no pipeline stalls.
+- **Zero special cases** — the null-deref class of bugs is eliminated entirely.
+- **Zero cognitive load** — callers never ask "can this fail?".
+- **Every type accepts 0** — zero velocity = "stopped", zero mass = "infinite",
+  zero transform = "identity", zero record = "not found".
+
+### Memory for the stub
+
+One zeroed page in `.bss` (`ZEROBLOCK_SIZE = 4096`) covers every stub
+requirement. All stubs alias into this single page. The write to the first
+byte of any field in the stub writes to this page — no segfault in practice
+because the page is mapped R/W. Production systems size arenas so the stub
+is never reached; it exists solely to eliminate branches.
 
 ---
 
@@ -155,12 +208,15 @@ Sets only when uniqueness is strictly required — must include a comment explai
 ## 10. Prohibited Constructs
 
 | Construct | Status |
-|---|---|
+|---|---|---|
 | Exceptions (`throw`/`try-catch`/`panic!`) | ❌ FORBIDDEN |
 | `snake_case` | ❌ FORBIDDEN |
 | `ALL_CAPS` | ❌ FORBIDDEN |
 | Global mutable state | ❌ FORBIDDEN |
 | Inline control flow (no braces) | ❌ FORBIDDEN |
+| Null checks / optional unwraps (runtime) | ❌ FORBIDDEN |
+| `Result` / `std::expected` / `Option` (runtime) | ❌ FORBIDDEN |
+| `std::optional` / `std::variant` (runtime) | ❌ FORBIDDEN |
 
 **Always use braces:**
 ```cpp
@@ -240,10 +296,48 @@ Linter configs must exactly match this guide (tabs, naming, etc.).
 - **Think in groups, not elements.** Arenas batch-allocate; individual allocations are an anti-pattern.
 - **Append-only growth.** Push onto the end. Each arena has a tuned initial capacity to minimise re-growth.
 - **Reuse scratch space.** Hashes, buffers, and temp storage live in reusable slots inside the arena.
-- **Zero is valid.** Every type accepts `0` as a meaningful default. A block of zeroed memory (`ZeroBlock`) is always a valid stub.
+- **Zero is valid** — applies to EVERY type and EVERY function, not just arenas. See §3.
 - **Literally cannot fail.** When the arena is exhausted, return the `ZeroBlock` stub. All callers handle stubs transparently — no `std::optional`, no `Option`, no `Result`, no exceptions, no unwinding.
 - **Minimum code.** No entropy injection, no defensive copies, no work beyond what the operation strictly requires.
 - **Clear on exit.** Zero the entire arena at the end of its lifetime. Reasoning: the `ZeroBlock` is always valid, so clearing restores the invariant.
+
+### Zero-is-valid in practice
+
+```cpp
+// Zero-is-valid in practice
+PhysicsBody *Body = ArenaAlloc(&Arena, sizeof(PhysicsBody));
+// Body is always valid. On exhaustion it points to the ZeroBlock stub.
+ApplyForce(Body, Force);
+```
+
+```cpp
+// Every runtime function follows the same pattern — zero is always valid:
+Vector3 Center = GetBodyCenter(Body);        // {0,0,0} on zero body
+Matrix3 Inertia = GetBodyInertia(Body);       // zero matrix on zero body
+float Speed = Vector3Length(Velocity);        // 0 on zero vector
+int Count = GetContactCount(Manifold);        // 0 on zero manifold
+```
+
+---
+
+## 14b Zero-is-valid Design Checklist
+
+Before writing ANY function, verify:
+
+1. **What is the zero value?** — Every type must have a valid zero state.
+   - `Vector3` → `{0,0,0}`
+   - `Matrix3` → zero matrix
+   - `Body*` → `&ZeroBody` (mass=0, position=origin, rotation=identity)
+   - `Contact*` → `&ZeroContact` (no penetration, no impulse)
+
+2. **Does every code path return a usable value?** — No branches for "error",
+   "not found", "invalid", "overflow". Return zero instead.
+
+3. **Can the caller use the result without branching?** — The caller must
+   be able to pass the result directly to the next function.
+
+4. **Are NaN/Inf guarded?** — Floating-point functions sanitize inputs
+   and return zero on degenerate input. NaN never propagates.
 
 ---
 
@@ -305,18 +399,18 @@ Defensive Programming --> Performance --> Safety
 ### Block 1: Core Architecture, Arena Memory, Fixed-Width Math Types & Data Structures (0001 - 0100)
 
 #### 1.1 Memory Architecture & Arena Systems
-- [ ] 0001. Implement `MemoryArena` structure matching the strict append-only allocation pattern.
-- [ ] 0002. Implement `ZeroBlock` global fallback allocation structure for exhausted arenas.
-- [ ] 0003. Implement `ZeroBlock` runtime safety checks to guarantee transparent execution on out-of-memory.
-- [ ] 0004. Write `ArenaInit` initialization routing ensuring page-aligned memory mapping.
-- [ ] 0005. Write `ArenaClear` block-zeroing mechanisms to restore the default safety invariants on reuse.
-- [ ] 0006. Implement scratch-pad sub-allocators inside the primary arena to handle localized transient arrays.
-- [ ] 0007. Design structural layouts ensuring zero raw per-element class constructors are invoked inside the arena.
-- [ ] 0008. Design structural layouts ensuring zero raw per-element class destructors are invoked during teardown.
-- [ ] 0009. Implement pointer-offset translation utilities for absolute raw addressing within the arena spaces.
-- [ ] 0010. Implement multi-layered arena partitioning for distinct simulation scopes (Frame, World, Worker).
-- [ ] 0011. Enforce strict compile-time layouts ensuring no RAII wrappers or smart pointers exist within the allocator.
-- [ ] 0012. Implement memory alignment enforcement metrics to guarantee 64-byte boundaries for SIMD lanes.
+- [x] 0001. Implement `MemoryArena` structure matching the strict append-only allocation pattern.
+- [x] 0002. Implement `ZeroBlock` global fallback allocation structure for exhausted arenas.
+- [x] 0003. Implement `ZeroBlock` runtime safety checks to guarantee transparent execution on out-of-memory.
+- [x] 0004. Write `ArenaInit` initialization routing ensuring page-aligned memory mapping.
+- [x] 0005. Write `ArenaClear` block-zeroing mechanisms to restore the default safety invariants on reuse.
+- [x] 0006. Implement scratch-pad sub-allocators inside the primary arena to handle localized transient arrays.
+- [x] 0007. Design structural layouts ensuring zero raw per-element class constructors are invoked inside the arena.
+- [x] 0008. Design structural layouts ensuring zero raw per-element class destructors are invoked during teardown.
+- [x] 0009. Implement pointer-offset translation utilities for absolute raw addressing within the arena spaces.
+- [x] 0010. Implement multi-layered arena partitioning for distinct simulation scopes (Frame, World, Worker).
+- [x] 0011. Enforce strict compile-time layouts ensuring no RAII wrappers or smart pointers exist within the allocator.
+- [x] 0012. Implement memory alignment enforcement metrics to guarantee 64-byte boundaries for SIMD lanes.
 
 #### 1.2 Fixed-Width Foundations & Scalar Math
 - [ ] 0013. Define explicit `Real` scalar precision types mapping to signed `float64_t` or `float32_t`.
