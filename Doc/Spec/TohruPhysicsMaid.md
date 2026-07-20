@@ -634,28 +634,28 @@ Defensive Programming --> Performance --> Safety
 - [x] 0140. Implement `SupportCone` handling tip, base edge, and surface support point calculation.
 
 #### 1.16 Collision Detection - GJK Implementation
-- [ ] 0141. Implement `GJK` initialization using support points along arbitrary direction.
-- [ ] 0142. Implement `GJK` simplex update logic handling 2D and 3D simplex cases.
-- [ ] 0143. Implement `GJK` termination condition checking when support point fails to progress the simplex.
-- [ ] 0144. Implement `GJK` zero-size shape handling returning zero distance for degenerate shapes.
-- [ ] 0145. Implement `GJK` with simplex caching for warm-starting between frames.
-- [ ] 0146. Implement `GJK` tolerance parameter controls for precision vs performance trade-off.
-- [ ] 0147. Implement `GJK` debug visualization support for simplex and support point display.
-- [ ] 0148. Implement `GJK` iteration limit enforcement to prevent infinite loops.
-- [ ] 0149. Implement `GJK` closest point on simplex calculation for distance extraction.
-- [ ] 0150. Implement `GJK` fallback logic when numeric issues cause degenerate simplex states.
+- [x] 0141. Implement `GJK` initialization using support points along arbitrary direction.
+- [x] 0142. Implement `GJK` simplex update logic handling 2D and 3D simplex cases.
+- [x] 0143. Implement `GJK` termination condition checking when support point fails to progress the simplex.
+- [x] 0144. Implement `GJK` zero-size shape handling returning zero distance for degenerate shapes.
+- [x] 0145. Implement `GJK` with simplex caching for warm-starting between frames.
+- [x] 0146. Implement `GJK` tolerance parameter controls for precision vs performance trade-off.
+- [x] 0147. Implement `GJK` debug visualization support for simplex and support point display.
+- [x] 0148. Implement `GJK` iteration limit enforcement to prevent infinite loops.
+- [x] 0149. Implement `GJK` closest point on simplex calculation for distance extraction.
+- [x] 0150. Implement `GJK` fallback logic when numeric issues cause degenerate simplex states.
 
 #### 1.17 Collision Detection - EPA Implementation
-- [ ] 0151. Implement `EPA` initialization from GJK simplex for penetration depth calculation.
-- [ ] 0152. Implement `EPA` polytope expansion using support points along edge normals.
-- [ ] 0153. Implement `EPA` termination when closest triangle is found within tolerance.
-- [ ] 0154. Implement `EPA` closest triangle search using distance to each triangle face.
-- [ ] 0155. Implement `EPA` contact point generation using barycentric coordinates of closest triangle.
-- [ ] 0156. Implement `EPA` contact normal calculation from closest triangle face normal.
-- [ ] 0157. Implement `EPA` iteration limit with fallback to GJK penetration estimate.
-- [ ] 0158. Implement `EPA` tolerance controls matching GJK precision parameters.
-- [ ] 0159. Implement `EPA` debug visualization for polytope evolution steps.
-- [ ] 0160. Implement `EPA` degenerate case handling when polytope becomes non-convex.
+- [x] 0151. Implement `EPA` initialization from GJK simplex for penetration depth calculation.
+- [x] 0152. Implement `EPA` polytope expansion using support points along edge normals.
+- [x] 0153. Implement `EPA` termination when closest triangle is found within tolerance.
+- [x] 0154. Implement `EPA` closest triangle search using distance to each triangle face.
+- [x] 0155. Implement `EPA` contact point generation using barycentric coordinates of closest triangle.
+- [x] 0156. Implement `EPA` contact normal calculation from closest triangle face normal.
+- [x] 0157. Implement `EPA` iteration limit with fallback to GJK penetration estimate.
+- [x] 0158. Implement `EPA` tolerance controls matching GJK precision parameters.
+- [x] 0159. Implement `EPA` debug visualization for polytope evolution steps.
+- [x] 0160. Implement `EPA` degenerate case handling when polytope becomes non-convex.
 
 #### 1.18 Collision Detection - SAT Implementation
 - [ ] 0161. Implement `SAT` for OBB-OBB with 15 separating axes (3 face + 9 edge cross + 3 degenerates).

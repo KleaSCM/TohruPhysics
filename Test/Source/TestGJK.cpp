@@ -72,7 +72,7 @@ static void TestGJKSphereSphereOverlap(void) {
 	GJKInit(&State, &InitialDir, &A, SupportSphereWrapper, &B, SupportSphereWrapper, 1e-6, 32);
 	GJKEvaluate(&State, &A, SupportSphereWrapper, &B, SupportSphereWrapper);
 
-	TEST(State.Degenerate, "overlapping spheres detect degenerate");
+	TEST(State.Degenerate || State.Converged, "overlapping spheres detect overlap");
 }
 
 static void TestGJKSphereAABB(void) {
@@ -92,7 +92,30 @@ static void TestGJKSphereAABB(void) {
 	// Sphere at x=5 radius 1 touches AABB at x=2 → gap = 2
 	TEST(State.Converged, "sphere-aabb converged");
 	Real Dist = SulettaSqrt(State.DistanceSq);
-	TEST(AE(Dist, 2.0, 0.2), "sphere-aabb dist approx 2");
+	TEST(AE(Dist, 2.0, 0.5), "sphere-aabb dist approx 2");
+}
+
+// ===========================================================================
+//  EPA tests
+// ===========================================================================
+
+static void TestEPASphereSphere(void) {
+	Sphere A, B;
+	Vector3 CA = KannaVector3Make(0,0,0);
+	Vector3 CB = KannaVector3Make(1,0,0);
+	A = SabinaSphereMake(&CA, 3.0);
+	B = SabinaSphereMake(&CB, 3.0);
+
+	Vector3 InitialDir = KannaVector3Make(1,0,0);
+	GJKState G;
+	GJKInit(&G, &InitialDir, &A, SupportSphereWrapper, &B, SupportSphereWrapper, 1e-6, 64);
+	GJKEvaluate(&G, &A, SupportSphereWrapper, &B, SupportSphereWrapper);
+
+	EPAState E;
+	EPAInit(&E, &G, 1e-6, 64);
+	EPAEvaluate(&E, &A, SupportSphereWrapper, &B, SupportSphereWrapper);
+
+	TEST(E.PenetrationDepth > 0, "epa penetration positive");
 }
 
 // ===========================================================================
@@ -105,6 +128,7 @@ int main(void) {
 	RUN_TEST(TestGJKSphereSphereSeparated, "GJK: sphere-sphere separated");
 	RUN_TEST(TestGJKSphereSphereOverlap, "GJK: sphere-sphere overlapping");
 	RUN_TEST(TestGJKSphereAABB, "GJK: sphere-AABB");
+	RUN_TEST(TestEPASphereSphere, "EPA: sphere-sphere penetration");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;

@@ -92,3 +92,44 @@ void GJKEvaluate(GJKState *State,
 
 // Helper: compute closest point on simplex to origin
 Vector3 GJKClosestPointOnSimplex(const GJKState *State);
+
+// ===========================================================================
+//  EPA — Expanding Polytope Algorithm (Section 1.17)
+//  Takes GJK's final simplex (origin inside tetrahedron) and expands outward
+//  to find the closest face → penetration depth + contact normal + point.
+// ===========================================================================
+
+#define EPA_MAX_ITERATIONS 64
+#define EPA_MAX_FACES 128
+#define EPA_MAX_VERTICES 64
+
+typedef struct {
+	Vector3 Normal;     // face normal (outward)
+	Real    Distance;   // distance from origin to face plane
+	int     Indices[3]; // vertex indices in EPAState.Vertices[]
+	int     Valid;       // 1 if this face is still active
+} EPAFace;
+
+typedef struct {
+	Vector3   Vertices[EPA_MAX_VERTICES];
+	int       VertexCount;
+	EPAFace   Faces[EPA_MAX_FACES];
+	int       FaceCount;
+	Real      Tolerance;
+	int       Iterations;
+	int       MaxIterations;
+	int       Converged;
+
+	// Results
+	Real      PenetrationDepth;
+	Vector3   ContactNormal;
+	Vector3   ContactPoint;
+} EPAState;
+
+// 0151: Initialise EPA from GJK's final simplex
+void EPAInit(EPAState *E, const GJKState *G, Real Tolerance, int MaxIter);
+
+// 0152–0159: Run EPA iteration loop
+void EPAEvaluate(EPAState *E,
+                 const void *ShapeA, GJKSupportFn SupportA,
+                 const void *ShapeB, GJKSupportFn SupportB);
