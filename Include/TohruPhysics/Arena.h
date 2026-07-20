@@ -9,26 +9,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
-// ---------------------------------------------------------------------------
-//  Error value — for init/startup only, not for runtime paths.
-//  エラー値 — 初期化/起動専用、実行パスでは使わないの。
-// ---------------------------------------------------------------------------
-typedef struct {
-	int    Code;
-	char   Message[256];
-} Error;
-
-static inline Error ErrOk(void) {
-	Error E = {0, {0}};
-	return E;
-}
-static inline Error ErrMake(int Code) {
-	Error E = {Code, {0}};
-	return E;
-}
-#define ErrIsOk(E)       ((E).Code == 0)
-#define ErrIsFail(E)     ((E).Code != 0)
+#include <TohruPhysics/Error.h>
 
 // ---------------------------------------------------------------------------
 //  ZeroBlock — global fallback zeroed page.

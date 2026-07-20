@@ -11,6 +11,7 @@
 #pragma once
 
 #include <TohruPhysics/Matrix.h>
+#include <TohruPhysics/Vector3.h>
 
 // ---------------------------------------------------------------------------
 //  0044: Quaternion — contiguous 4-element layout.
@@ -49,3 +50,6 @@ Quaternion EuphylliaQuaternionSlerp(const Quaternion *A, const Quaternion *B, Re
 
 // 0051
 Quaternion EuphylliaQuaternionConjugate(const Quaternion *Q);
+
+// Rotate a vector by this quaternion: v' = q * v * q⁻¹
+Vector3 EuphylliaQuaternionRotateVector(const Quaternion *Q, const Vector3 *V);

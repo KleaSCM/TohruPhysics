@@ -50,7 +50,7 @@ static size_t MappedSize(Arena *A) {
 
 Error TohruArenaInit(Arena *A, size_t InitCap) {
 	if (!A) {
-		return ErrMake(-1);
+		return ErrMake(ErrorCode_InvalidParameter);
 	}
 
 	size_t Cap = InitCap > 0 ? InitCap : ARENA_DEFAULT_CAPACITY;
@@ -70,7 +70,7 @@ Error TohruArenaInit(Arena *A, size_t InitCap) {
 		A->Base = TohruZeroBlock;
 		A->Capacity = ZEROBLOCK_SIZE;
 		A->Offset = 0;
-		return ErrMake(-2);
+		return ErrMake(ErrorCode_OutOfMemory);
 	}
 
 	A->Base = Base;
@@ -81,7 +81,7 @@ Error TohruArenaInit(Arena *A, size_t InitCap) {
 
 Error TohruArenaInitFixed(Arena *A, void *Buffer, size_t Capacity) {
 	if (!A || !Buffer || Capacity == 0) {
-		return ErrMake(-1);
+		return ErrMake(ErrorCode_InvalidParameter);
 	}
 
 	A->Base = Buffer;
@@ -238,7 +238,7 @@ int IluluOwns(Arena *A, const void *Ptr) {
 
 Error YuyuArenaSetInit(ArenaSet *S, size_t FrameCap, size_t WorldCap, size_t WorkerCap) {
 	if (!S) {
-		return ErrMake(-1);
+		return ErrMake(ErrorCode_InvalidParameter);
 	}
 
 	Error Err;

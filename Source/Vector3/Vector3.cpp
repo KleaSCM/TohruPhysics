@@ -15,6 +15,14 @@ Vector3 KannaVector3Make(Real X, Real Y, Real Z) {
 	return V;
 }
 
+Vector3 KannaVector3Zero(void) {
+	Vector3 V;
+	V.Data[0] = REAL_ZERO;
+	V.Data[1] = REAL_ZERO;
+	V.Data[2] = REAL_ZERO;
+	return V;
+}
+
 Vector3 KannaVector3Add(const Vector3 *A, const Vector3 *B) {
 	Vector3 R;
 	R.Data[0] = A->Data[0] + B->Data[0];

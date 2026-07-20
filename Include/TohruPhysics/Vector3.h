@@ -46,3 +46,4 @@ int     KannaVector3Equal(const Vector3 *A, const Vector3 *B);
 //  便利なコンストラクターね。
 // ---------------------------------------------------------------------------
 Vector3 KannaVector3Make(Real X, Real Y, Real Z);
+Vector3 KannaVector3Zero(void);

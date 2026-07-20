@@ -36,3 +36,23 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	Array/Array.cpp
 )
+
+# Transform subsystem
+target_sources(TohruPhysics PRIVATE
+	Transform/Transform.cpp
+)
+
+# Error subsystem
+target_sources(TohruPhysics PRIVATE
+	Error/Error.cpp
+)
+
+# Log subsystem
+target_sources(TohruPhysics PRIVATE
+	Log/Log.cpp
+)
+
+# Geometry subsystem
+target_sources(TohruPhysics PRIVATE
+	Geometry/Geometry.cpp
+)

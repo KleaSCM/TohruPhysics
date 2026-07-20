@@ -125,6 +125,22 @@ Quaternion EuphylliaQuaternionConjugate(const Quaternion *Q) {
 	return R;
 }
 
+Vector3 EuphylliaQuaternionRotateVector(const Quaternion *Q, const Vector3 *V) {
+	Vector3 U = KannaVector3Make(Q->Data[0], Q->Data[1], Q->Data[2]);
+	Real W = Q->Data[3];
+
+	// t = 2 * cross(U, V)
+	Vector3 CrossUV = KannaVector3Cross(&U, V);
+	Vector3 T = KannaVector3Scale(&CrossUV, 2.0);
+
+	// result = V + W * t + cross(U, t)
+	Vector3 WT = KannaVector3Scale(&T, W);
+	Vector3 CrossUT = KannaVector3Cross(&U, &T);
+	Vector3 R = KannaVector3Add(V, &WT);
+	R = KannaVector3Add(&R, &CrossUT);
+	return R;
+}
+
 Quaternion EuphylliaQuaternionSlerp(const Quaternion *A, const Quaternion *B, Real T) {
 	Real CosOmega = EuphylliaQuaternionDot(A, B);
 

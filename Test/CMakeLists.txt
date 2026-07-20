@@ -29,3 +29,23 @@ add_executable(TestArray
 	Source/TestArray.cpp
 )
 target_link_libraries(TestArray PRIVATE TohruPhysics)
+
+add_executable(TestTransform
+	Source/TestTransform.cpp
+)
+target_link_libraries(TestTransform PRIVATE TohruPhysics)
+
+add_executable(TestError
+	Source/TestError.cpp
+)
+target_link_libraries(TestError PRIVATE TohruPhysics)
+
+add_executable(TestLog
+	Source/TestLog.cpp
+)
+target_link_libraries(TestLog PRIVATE TohruPhysics)
+
+add_executable(TestGeometry
+	Source/TestGeometry.cpp
+)
+target_link_libraries(TestGeometry PRIVATE TohruPhysics)
