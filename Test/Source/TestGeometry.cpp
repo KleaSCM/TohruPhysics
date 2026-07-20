@@ -752,6 +752,89 @@ static void TestDistanceOBBOBB(void) {
 	TEST(D < REAL_ZERO, "dist obb-obb overlap negative");
 }
 
+// ===========================================================================
+//  1.15 Support function tests
+// ===========================================================================
+
+static void TestSupportSphere(void) {
+	Vector3 C = KannaVector3Make(0,0,0);
+	Sphere S = SabinaSphereMake(&C, 5.0);
+	Vector3 Dir = KannaVector3Make(0,1,0);
+	Vector3 SP = SupportSphere(&S, &Dir);
+	TEST(AE(SP.Data[1], 5.0, 1e-6), "support sphere top y=5");
+	Dir = KannaVector3Make(1,0,0);
+	SP = SupportSphere(&S, &Dir);
+	TEST(AE(SP.Data[0], 5.0, 1e-6), "support sphere right x=5");
+}
+
+static void TestSupportAABB(void) {
+	Vector3 Min = KannaVector3Make(-2,-2,-2);
+	Vector3 Max = KannaVector3Make(2,2,2);
+	AABB Box = SabinaAABBMake(&Min, &Max);
+	Vector3 Dir = KannaVector3Make(1,1,1);
+	Vector3 SP = SupportAABB(&Box, &Dir);
+	TEST(AE(SP.Data[0], 2.0, 1e-12), "support aabb x=2");
+	TEST(AE(SP.Data[1], 2.0, 1e-12), "support aabb y=2");
+	Dir = KannaVector3Make(-1,0,0);
+	SP = SupportAABB(&Box, &Dir);
+	TEST(AE(SP.Data[0], -2.0, 1e-12), "support aabb -x=-2");
+}
+
+static void TestSupportOBB(void) {
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	Vector3 C = KannaVector3Zero();
+	Vector3 HE = KannaVector3Make(1,2,3);
+	OBB Box = SabinaOBBMake(&C, &HE, &Id);
+	Vector3 Dir = KannaVector3Make(0,1,0);
+	Vector3 SP = SupportOBB(&Box, &Dir);
+	TEST(AE(SP.Data[1], 2.0, 1e-12), "support obb y=2");
+	Dir = KannaVector3Make(0,0,-1);
+	SP = SupportOBB(&Box, &Dir);
+	TEST(AE(SP.Data[2], -3.0, 1e-12), "support obb z=-3");
+}
+
+static void TestSupportCapsule(void) {
+	Vector3 CS = KannaVector3Make(0,0,0);
+	Vector3 CE = KannaVector3Make(0,10,0);
+	Capsule Cap = SabinaCapsuleMake(&CS, &CE, 2.0);
+	Vector3 Dir = KannaVector3Make(0,1,0);
+	Vector3 SP = SupportCapsule(&Cap, &Dir);
+	TEST(AE(SP.Data[1], 12.0, 1e-6), "support capsule top y=12");
+	Dir = KannaVector3Make(1,0,0);
+	SP = SupportCapsule(&Cap, &Dir);
+	TEST(AE(SP.Data[0], 2.0, 1e-6), "support capsule side x=2");
+}
+
+static void TestSupportCylinder(void) {
+	Cylinder Cy;
+	Cy.Center = KannaVector3Make(0,0,0);
+	Cy.Radius = 2.0;
+	Cy.HalfHeight = 3.0;
+	Vector3 Dir = KannaVector3Make(0,1,0);
+	Vector3 SP = SupportCylinder(&Cy, &Dir);
+	TEST(AE(SP.Data[1], 3.0, 1e-6), "support cyl top y=3");
+	Dir = KannaVector3Make(1,0,0);
+	SP = SupportCylinder(&Cy, &Dir);
+	TEST(AE(SP.Data[0], 2.0, 1e-6), "support cyl side x=2");
+}
+
+static void TestSupportCone(void) {
+	Cone Co;
+	Co.Center = KannaVector3Make(0,0,0);
+	Co.Radius = 2.0;
+	Co.HalfHeight = 3.0;
+	Vector3 Dir = KannaVector3Make(0,1,0);
+	Vector3 SP = SupportCone(&Co, &Dir);
+	TEST(AE(SP.Data[1], 3.0, 1e-6), "support cone apex y=3");
+	Dir = KannaVector3Make(0,-1,0);
+	SP = SupportCone(&Co, &Dir);
+	TEST(AE(SP.Data[1], -3.0, 1e-6), "support cone base y=-3");
+	Dir = KannaVector3Make(1,1,0);
+	SP = SupportCone(&Co, &Dir);
+	// Should be somewhere on the side
+	TEST(SP.Data[1] > -3.0 && SP.Data[1] <= 3.0, "support cone side");
+}
+
 int main(void) {
 	fprintf(stderr, "=== TestGeometry ===\n");
 
@@ -811,6 +894,12 @@ int main(void) {
 	RUN_TEST(TestDistanceSphereSphere, "Distance: Sphere-Sphere");
 	RUN_TEST(TestDistanceAABBAABB, "Distance: AABB-AABB");
 	RUN_TEST(TestDistanceOBBOBB, "Distance: OBB-OBB");
+	RUN_TEST(TestSupportSphere, "Support: Sphere");
+	RUN_TEST(TestSupportAABB, "Support: AABB");
+	RUN_TEST(TestSupportOBB, "Support: OBB");
+	RUN_TEST(TestSupportCapsule, "Support: Capsule");
+	RUN_TEST(TestSupportCylinder, "Support: Cylinder");
+	RUN_TEST(TestSupportCone, "Support: Cone");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;

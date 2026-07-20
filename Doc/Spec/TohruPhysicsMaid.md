@@ -622,16 +622,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0130. Implement `DistanceOBBOBB` utilizing SAT with distance axes and penetration depth calculation.
 
 #### 1.15 Collision Detection - Support Function Primitives
-- [ ] 0131. Implement `SupportSphere` returning sphere center plus radius along direction vector.
-- [ ] 0132. Implement `SupportAABB` returning the vertex with maximum dot product along direction.
-- [ ] 0133. Implement `SupportOBB` transforming direction into OBB local space, finding extents, transforming back.
-- [ ] 0134. Implement `SupportCapsule` projecting direction onto capsule axis, adding radius directional offset.
-- [ ] 0135. Implement `SupportConvexHull` iterating vertices with direction dot product to find maximum.
-- [ ] 0136. Implement `SupportTriangleMesh` using BVH acceleration to find support for complex meshes.
-- [ ] 0137. Implement `SupportCompoundShape` iterating sub-shapes and combining their support results.
-- [ ] 0138. Implement `SupportHeightField` sampling height at projected direction to find support point.
-- [ ] 0139. Implement `SupportCylinder` handling edge, face, and cap support point calculation.
-- [ ] 0140. Implement `SupportCone` handling tip, base edge, and surface support point calculation.
+- [x] 0131. Implement `SupportSphere` returning sphere center plus radius along direction vector.
+- [x] 0132. Implement `SupportAABB` returning the vertex with maximum dot product along direction.
+- [x] 0133. Implement `SupportOBB` transforming direction into OBB local space, finding extents, transforming back.
+- [x] 0134. Implement `SupportCapsule` projecting direction onto capsule axis, adding radius directional offset.
+- [x] 0135. Implement `SupportConvexHull` iterating vertices with direction dot product to find maximum.
+- [x] 0136. Implement `SupportTriangleMesh` using BVH acceleration to find support for complex meshes.
+- [x] 0137. Implement `SupportCompoundShape` iterating sub-shapes and combining their support results.
+- [x] 0138. Implement `SupportHeightField` sampling height at projected direction to find support point.
+- [x] 0139. Implement `SupportCylinder` handling edge, face, and cap support point calculation.
+- [x] 0140. Implement `SupportCone` handling tip, base edge, and surface support point calculation.
 
 #### 1.16 Collision Detection - GJK Implementation
 - [ ] 0141. Implement `GJK` initialization using support points along arbitrary direction.
