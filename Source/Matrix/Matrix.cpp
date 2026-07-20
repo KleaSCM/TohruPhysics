@@ -290,7 +290,14 @@ Matrix4x4 AnisphiaMatrix4x4Scale(Real Sx, Real Sy, Real Sz) {
 }
 
 Matrix4x4 AnisphiaMatrix4x4TRS(const Vector3 *T, const Quaternion *R, const Vector3 *S) {
-	Matrix4x4 Trans = AnisphiaMatrix4x4Translation(T);
+	// In row-vector convention (translation in last row), TRS means:
+	// v' = (v * Scale) * Rotate + Translate = v * Scale * Rotate * Translate
+	// Rowベクトル表記では: v' = v * S * R * T
+	Matrix4x4 Scal = AnisphiaMatrix4x4Identity();
+	Scal.Data[0] = S->Data[0];
+	Scal.Data[5] = S->Data[1];
+	Scal.Data[10] = S->Data[2];
+
 	Matrix4x4 Rot = AnisphiaMatrix4x4Identity();
 	Matrix3x3 R3 = EuphylliaQuaternionToMatrix3x3(R);
 	int I, J;
@@ -299,12 +306,13 @@ Matrix4x4 AnisphiaMatrix4x4TRS(const Vector3 *T, const Quaternion *R, const Vect
 			Rot.Data[I * 4 + J] = R3.Data[I * 3 + J];
 		}
 	}
-	Matrix4x4 Scal = AnisphiaMatrix4x4Identity();
-	Scal.Data[0] = S->Data[0];
-	Scal.Data[5] = S->Data[1];
-	Scal.Data[10] = S->Data[2];
-	Matrix4x4 RS = AnisphiaMatrix4x4Mul(&Rot, &Scal);
-	return AnisphiaMatrix4x4Mul(&Trans, &RS);
+
+	Matrix4x4 Trans = AnisphiaMatrix4x4Translation(T);
+
+	// v' = v * S * R * T → build as (S * R) * T
+	// v' = v * S * R * T → (S * R) * Tとして構築
+	Matrix4x4 SR = AnisphiaMatrix4x4Mul(&Scal, &Rot);
+	return AnisphiaMatrix4x4Mul(&SR, &Trans);
 }
 
 Matrix4x4 AnisphiaMatrix4x4LookAt(const Vector3 *Eye, const Vector3 *Target, const Vector3 *Up) {
