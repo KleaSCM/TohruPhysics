@@ -234,11 +234,11 @@ static void TestRayClosestPoint(void) {
 	Ray R = SabinaRayMake(&O, &D);
 
 	Vector3 P1 = KannaVector3Make(10, 5, 0);
-	Real T = SabinaRayClosestPoint(&R, &P1);
+	Real T = SabinaRayClosestT(&R, &P1);
 	TEST(AE(T, 10.0, 1e-12), "ray closest t=10");
 
 	Vector3 P2 = KannaVector3Make(-5, 0, 0);
-	T = SabinaRayClosestPoint(&R, &P2);
+	T = SabinaRayClosestT(&R, &P2);
 	TEST(AE(T, 0.0, 1e-12), "ray behind origin clamped to 0");
 }
 

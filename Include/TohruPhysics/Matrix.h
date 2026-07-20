@@ -16,6 +16,10 @@
 #include <TohruPhysics/Vector3.h>
 #include <TohruPhysics/Math.h>
 
+// Forward declaration — Quaternion.h includes Matrix.h (circular).
+// 前方宣言 — Quaternion.hがMatrix.hをインクルードするの（循環）。
+struct Quaternion;
+
 // ---------------------------------------------------------------------------
 //  0033: Matrix3x3 — row-major, 9 elements.
 //  行優先、9要素。

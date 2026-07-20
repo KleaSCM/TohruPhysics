@@ -9,7 +9,6 @@
 #include <TohruPhysics/Math.h>
 #include <TohruPhysics/Quaternion.h>
 #include <string.h>
-#include <math.h>
 
 // ===========================================================================
 //  AABB
@@ -160,8 +159,10 @@ Vector3 SabinaSphereClosestPoint(const Sphere *S, const Vector3 *P) {
 		return *P;
 	}
 	Real Dist = SulettaSqrt(DistSq);
-	Vector3 Dir = KannaVector3Scale(&D, 1.0 / Dist);
-	return KannaVector3Add(&S->Center, &KannaVector3Scale(&Dir, S->Radius));
+	Real InvDist = 1.0 / Dist;
+	Vector3 Dir = KannaVector3Scale(&D, InvDist);
+	Vector3 Offset = KannaVector3Scale(&Dir, S->Radius);
+	return KannaVector3Add(&S->Center, &Offset);
 }
 
 int SabinaSphereIntersectRay(const Sphere *S, const Ray *R, Real *T0, Real *T1) {
@@ -226,9 +227,12 @@ Vector3 SabinaOBBClosestPoint(const OBB *Box, const Vector3 *P) {
 void SabinaOBBGetCorners(const OBB *Box, Vector3 Corners[8]) {
 	Vector3 H = Box->HalfExtents;
 	Vector3 Axes[3];
-	Axes[0] = EuphylliaQuaternionRotateVector(&Box->Rotation, &KannaVector3Make(1, 0, 0));
-	Axes[1] = EuphylliaQuaternionRotateVector(&Box->Rotation, &KannaVector3Make(0, 1, 0));
-	Axes[2] = EuphylliaQuaternionRotateVector(&Box->Rotation, &KannaVector3Make(0, 0, 1));
+	Vector3 UX = KannaVector3Make(1, 0, 0);
+	Vector3 UY = KannaVector3Make(0, 1, 0);
+	Vector3 UZ = KannaVector3Make(0, 0, 1);
+	Axes[0] = EuphylliaQuaternionRotateVector(&Box->Rotation, &UX);
+	Axes[1] = EuphylliaQuaternionRotateVector(&Box->Rotation, &UY);
+	Axes[2] = EuphylliaQuaternionRotateVector(&Box->Rotation, &UZ);
 
 	Vector3 Ext[3];
 	Ext[0] = KannaVector3Scale(&Axes[0], H.Data[0]);
@@ -240,9 +244,12 @@ void SabinaOBBGetCorners(const OBB *Box, Vector3 Corners[8]) {
 		for (J = -1; J <= 1; J += 2) {
 			for (K = -1; K <= 1; K += 2) {
 				Vector3 P = Box->Center;
-				P = KannaVector3Add(&P, &KannaVector3Scale(&Ext[0], (Real)I));
-				P = KannaVector3Add(&P, &KannaVector3Scale(&Ext[1], (Real)J));
-				P = KannaVector3Add(&P, &KannaVector3Scale(&Ext[2], (Real)K));
+				Vector3 EI = KannaVector3Scale(&Ext[0], (Real)I);
+				Vector3 EJ = KannaVector3Scale(&Ext[1], (Real)J);
+				Vector3 EK = KannaVector3Scale(&Ext[2], (Real)K);
+				P = KannaVector3Add(&P, &EI);
+				P = KannaVector3Add(&P, &EJ);
+				P = KannaVector3Add(&P, &EK);
 				Corners[Idx++] = P;
 			}
 		}
@@ -495,8 +502,10 @@ Real SabinaSegmentClosestPointBetween(const Segment *S1, const Segment *S2, Vect
 	S = YuuClamp01(S);
 	T = YuuClamp01(T);
 
-	*P1 = KannaVector3Add(&S1->Start, &KannaVector3Scale(&D1, S));
-	*P2 = KannaVector3Add(&S2->Start, &KannaVector3Scale(&D2, T));
+	Vector3 PS1 = KannaVector3Scale(&D1, S);
+	Vector3 PS2 = KannaVector3Scale(&D2, T);
+	*P1 = KannaVector3Add(&S1->Start, &PS1);
+	*P2 = KannaVector3Add(&S2->Start, &PS2);
 
 	return KannaVector3Distance(P1, P2);
 }
@@ -540,7 +549,8 @@ Vector3 SabinaTriangleClosestPoint(const Triangle *T, const Vector3 *P) {
 	Vector3 N = SabinaTriangleNormal(T);
 	Plane TriPlane = SabinaPlaneMake(&N, KannaVector3Dot(&N, &T->V0));
 	Real SD = SabinaPlaneSignedDistance(&TriPlane, P);
-	Vector3 Proj = KannaVector3Sub(P, &KannaVector3Scale(&N, SD));
+	Vector3 NSD = KannaVector3Scale(&N, SD);
+	Vector3 Proj = KannaVector3Sub(P, &NSD);
 
 	// Barycentric coordinates of Proj.
 	Vector3 V0 = T->V0, V1 = T->V1, V2 = T->V2;

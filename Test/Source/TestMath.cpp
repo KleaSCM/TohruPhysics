@@ -216,6 +216,113 @@ static void TestSulettaSqrt(void) {
 }
 
 // ===========================================================================
+//  Suletta — new trig and math (Tan, Atan2, Floor, Ceil, Round, Fmod, Pow)
+// ===========================================================================
+
+static void TestSulettaTan(void) {
+	TEST(NagisaApproxZero(SulettaTan(0.0), 1e-6), "tan(0) ~ 0");
+	TEST(NagisaApproxEqual(SulettaTan(REAL_PI / 4.0), 1.0, 1e-4), "tan(PI/4) ~ 1");
+	TEST(NagisaApproxEqual(SulettaTan(-REAL_PI / 4.0), -1.0, 1e-4), "tan(-PI/4) ~ -1");
+	TEST(NagisaApproxZero(SulettaTan(REAL_PI), 1e-4), "tan(PI) ~ 0");
+	TEST(SulettaTan(MakeNaN()) == 0.0, "tan(NaN) -> 0");
+	TEST(SulettaTan(MakePosInf()) == 0.0, "tan(Inf) -> 0");
+	TEST(SulettaTan(MakeNegInf()) == 0.0, "tan(-Inf) -> 0");
+}
+
+static void TestSulettaAtan2(void) {
+	TEST(NagisaApproxZero(SulettaAtan2(0.0, 1.0), 1e-6), "atan2(0,1) ~ 0");
+	TEST(NagisaApproxEqual(SulettaAtan2(1.0, 0.0), REAL_PI_HALF, 1e-4), "atan2(1,0) ~ PI/2");
+	TEST(NagisaApproxEqual(SulettaAtan2(0.0, -1.0), REAL_PI, 1e-4), "atan2(0,-1) ~ PI");
+	TEST(NagisaApproxEqual(SulettaAtan2(-1.0, 0.0), -REAL_PI_HALF, 1e-4), "atan2(-1,0) ~ -PI/2");
+	TEST(NagisaApproxEqual(SulettaAtan2(1.0, 1.0), REAL_PI / 4.0, 1e-4), "atan2(1,1) ~ PI/4");
+	TEST(SulettaAtan2(MakeNaN(), 1.0) == 0.0, "atan2(NaN,1) -> 0");
+	TEST(SulettaAtan2(1.0, MakeNaN()) == 0.0, "atan2(1,NaN) -> 0");
+}
+
+static void TestSulettaFloor(void) {
+	TEST(NagisaApproxEqual(SulettaFloor(3.7), 3.0, 1e-9), "floor(3.7) ~ 3");
+	TEST(NagisaApproxEqual(SulettaFloor(-3.7), -4.0, 1e-9), "floor(-3.7) ~ -4");
+	TEST(NagisaApproxEqual(SulettaFloor(0.0), 0.0, 1e-9), "floor(0) ~ 0");
+	TEST(NagisaApproxEqual(SulettaFloor(5.0), 5.0, 1e-9), "floor(5) ~ 5");
+	TEST(SulettaFloor(MakeNaN()) == 0.0, "floor(NaN) -> 0");
+}
+
+static void TestSulettaCeil(void) {
+	TEST(NagisaApproxEqual(SulettaCeil(3.2), 4.0, 1e-9), "ceil(3.2) ~ 4");
+	TEST(NagisaApproxEqual(SulettaCeil(-3.2), -3.0, 1e-9), "ceil(-3.2) ~ -3");
+	TEST(NagisaApproxEqual(SulettaCeil(0.0), 0.0, 1e-9), "ceil(0) ~ 0");
+	TEST(NagisaApproxEqual(SulettaCeil(5.0), 5.0, 1e-9), "ceil(5) ~ 5");
+	TEST(SulettaCeil(MakeNaN()) == 0.0, "ceil(NaN) -> 0");
+}
+
+static void TestSulettaRound(void) {
+	TEST(NagisaApproxEqual(SulettaRound(3.4), 3.0, 1e-9), "round(3.4) ~ 3");
+	TEST(NagisaApproxEqual(SulettaRound(3.6), 4.0, 1e-9), "round(3.6) ~ 4");
+	TEST(NagisaApproxEqual(SulettaRound(-3.4), -3.0, 1e-9), "round(-3.4) ~ -3");
+	TEST(NagisaApproxEqual(SulettaRound(-3.6), -4.0, 1e-9), "round(-3.6) ~ -4");
+	TEST(NagisaApproxEqual(SulettaRound(0.0), 0.0, 1e-9), "round(0) ~ 0");
+	TEST(SulettaRound(0.5) == 0.0, "round(0.5) -> 0 (ties to even)");
+	TEST(SulettaRound(MakeNaN()) == 0.0, "round(NaN) -> 0");
+}
+
+static void TestSulettaFmod(void) {
+	TEST(NagisaApproxEqual(SulettaFmod(10.0, 3.0), 1.0, 1e-9), "fmod(10,3) ~ 1");
+	TEST(NagisaApproxEqual(SulettaFmod(10.5, 3.0), 1.5, 1e-9), "fmod(10.5,3) ~ 1.5");
+	TEST(NagisaApproxEqual(SulettaFmod(-10.0, 3.0), -1.0, 1e-9), "fmod(-10,3) ~ -1");
+	TEST(SulettaFmod(10.0, 0.0) == 0.0, "fmod(10,0) -> 0");
+	TEST(SulettaFmod(MakeNaN(), 1.0) == 0.0, "fmod(NaN,1) -> 0");
+	TEST(SulettaFmod(1.0, MakeNaN()) == 0.0, "fmod(1,NaN) -> 0");
+}
+
+static void TestSulettaPow(void) {
+	TEST(NagisaApproxEqual(SulettaPow(2.0, 3.0), 8.0, 1e-9), "pow(2,3) ~ 8");
+	TEST(NagisaApproxEqual(SulettaPow(4.0, 0.5), 2.0, 1e-6), "pow(4,0.5) ~ 2");
+	TEST(NagisaApproxEqual(SulettaPow(10.0, 0.0), 1.0, 1e-9), "pow(10,0) ~ 1");
+	TEST(NagisaApproxEqual(SulettaPow(0.0, 2.0), 0.0, 1e-9), "pow(0,2) ~ 0");
+	TEST(SulettaPow(MakeNaN(), 1.0) == 0.0, "pow(NaN,1) -> 0");
+	TEST(SulettaPow(1.0, MakeNaN()) == 0.0, "pow(1,NaN) -> 0");
+}
+
+// ===========================================================================
+//  Kanna — interpolation and mapping
+// ===========================================================================
+
+static void TestKannaLerp(void) {
+	TEST(NagisaApproxEqual(KannaLerp(0.0, 10.0, 0.5), 5.0, 1e-9), "lerp(0,10,0.5) ~ 5");
+	TEST(NagisaApproxEqual(KannaLerp(0.0, 10.0, 0.0), 0.0, 1e-9), "lerp(0,10,0) ~ 0");
+	TEST(NagisaApproxEqual(KannaLerp(0.0, 10.0, 1.0), 10.0, 1e-9), "lerp(0,10,1) ~ 10");
+	TEST(NagisaApproxEqual(KannaLerp(10.0, 20.0, 0.25), 12.5, 1e-9), "lerp(10,20,0.25) ~ 12.5");
+	TEST(NagisaApproxEqual(KannaLerp(5.0, 5.0, 0.5), 5.0, 1e-9), "lerp(5,5,0.5) ~ 5");
+	TEST(KannaLerp(MakeNaN(), 10.0, 0.5) == 0.0, "lerp(NaN,10,0.5) -> 0");
+}
+
+static void TestKannaSmoothstep(void) {
+	TEST(NagisaApproxEqual(KannaSmoothstep(0.0, 1.0, 0.5), 0.5, 1e-9), "smoothstep(0,1,0.5) ~ 0.5");
+	TEST(NagisaApproxEqual(KannaSmoothstep(0.0, 1.0, 0.0), 0.0, 1e-9), "smoothstep(0,1,0) ~ 0");
+	TEST(NagisaApproxEqual(KannaSmoothstep(0.0, 1.0, 1.0), 1.0, 1e-9), "smoothstep(0,1,1) ~ 1");
+	TEST(NagisaApproxEqual(KannaSmoothstep(0.0, 1.0, 0.25), 0.15625, 1e-9), "smoothstep(0,1,0.25) ~ 0.15625");
+	TEST(KannaSmoothstep(MakeNaN(), 1.0, 0.5) == 0.0, "smoothstep(NaN,1,0.5) -> 0");
+}
+
+static void TestKannaDegToRad(void) {
+	TEST(NagisaApproxEqual(KannaDegToRad(0.0), 0.0, 1e-9), "degToRad(0) ~ 0");
+	TEST(NagisaApproxEqual(KannaDegToRad(180.0), REAL_PI, 1e-9), "degToRad(180) ~ PI");
+	TEST(NagisaApproxEqual(KannaDegToRad(90.0), REAL_PI_HALF, 1e-9), "degToRad(90) ~ PI/2");
+	TEST(NagisaApproxEqual(KannaDegToRad(-180.0), -REAL_PI, 1e-9), "degToRad(-180) ~ -PI");
+	TEST(NagisaApproxEqual(KannaDegToRad(360.0), REAL_2PI, 1e-9), "degToRad(360) ~ 2PI");
+	TEST(KannaDegToRad(MakeNaN()) == 0.0, "degToRad(NaN) -> 0");
+}
+
+static void TestKannaRadToDeg(void) {
+	TEST(NagisaApproxEqual(KannaRadToDeg(0.0), 0.0, 1e-9), "radToDeg(0) ~ 0");
+	TEST(NagisaApproxEqual(KannaRadToDeg(REAL_PI), 180.0, 1e-9), "radToDeg(PI) ~ 180");
+	TEST(NagisaApproxEqual(KannaRadToDeg(REAL_PI_HALF), 90.0, 1e-9), "radToDeg(PI/2) ~ 90");
+	TEST(NagisaApproxEqual(KannaRadToDeg(-REAL_PI), -180.0, 1e-9), "radToDeg(-PI) ~ -180");
+	TEST(NagisaApproxEqual(KannaRadToDeg(REAL_2PI), 360.0, 1e-9), "radToDeg(2PI) ~ 360");
+	TEST(KannaRadToDeg(MakeNaN()) == 0.0, "radToDeg(NaN) -> 0");
+}
+
+// ===========================================================================
 //  Main
 // ===========================================================================
 
@@ -243,6 +350,19 @@ int main(void) {
 	RUN_TEST(TestSulettaCos);
 	RUN_TEST(TestSulettaInvSqrt);
 	RUN_TEST(TestSulettaSqrt);
+
+	RUN_TEST(TestSulettaTan);
+	RUN_TEST(TestSulettaAtan2);
+	RUN_TEST(TestSulettaFloor);
+	RUN_TEST(TestSulettaCeil);
+	RUN_TEST(TestSulettaRound);
+	RUN_TEST(TestSulettaFmod);
+	RUN_TEST(TestSulettaPow);
+
+	RUN_TEST(TestKannaLerp);
+	RUN_TEST(TestKannaSmoothstep);
+	RUN_TEST(TestKannaDegToRad);
+	RUN_TEST(TestKannaRadToDeg);
 
 	fprintf(stderr, "\n=== %d passed, %d failed ===\n", Passed, Failed);
 	return Failed > 0 ? 1 : 0;

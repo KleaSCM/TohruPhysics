@@ -20,7 +20,7 @@
 //  0044: Quaternion — contiguous 4-element layout.
 //  連続4要素レイアウト。
 // ---------------------------------------------------------------------------
-typedef struct {
+typedef struct Quaternion {
 	Real Data[4]; // (X, Y, Z, W)
 } Quaternion;
 

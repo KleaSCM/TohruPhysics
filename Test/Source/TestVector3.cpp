@@ -112,10 +112,10 @@ static void TestVector3Normalize(void) {
 
 static void TestVector3Dist(void) {
 	Setup();
-	Real D = KannaVector3Dist(&VA, &VA);
+	Real D = KannaVector3Distance(&VA, &VA);
 	TEST(NagisaApproxZero(D, 1e-9), "dist self");
 	// |VB - VA| = sqrt(3^2 + 3^2 + 3^2) = sqrt(27) = 5.196...
-	Real D2 = KannaVector3Dist(&VA, &VB);
+	Real D2 = KannaVector3Distance(&VA, &VB);
 	TEST(NagisaApproxEqual(D2, 5.196152422706632, 1e-6), "dist");
 }
 
