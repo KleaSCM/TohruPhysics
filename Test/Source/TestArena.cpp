@@ -361,6 +361,41 @@ static void TestZeroBlockFallback(void) {
 	PASS();
 }
 
+static void TestAllocZeroed(void) {
+	TEST("KobayashiAllocZeroed");
+
+	Arena A;
+	TohruArenaInit(&A, 256);
+
+	char *P = (char *)KobayashiAllocZeroed(&A, 64);
+	for (size_t I = 0; I < 64; I++) {
+		CHECK(P[I] == 0, "non-zero in zeroed alloc");
+	}
+
+	TohruArenaDestroy(&A);
+	PASS();
+}
+
+static void TestSnapshotRollback(void) {
+	TEST("ElmaArenaSnapshot / Rollback");
+
+	Arena A;
+	TohruArenaInit(&A, 256);
+
+	KobayashiAlloc(&A, 32);
+	size_t Snap = ElmaArenaSnapshot(&A);
+	CHECK(ElmaArenaUsed(&A) == 32, "used not 32 at snapshot");
+
+	KobayashiAlloc(&A, 32);
+	CHECK(ElmaArenaUsed(&A) == 64, "used not 64 after more alloc");
+
+	ElmaArenaRollback(&A, Snap);
+	CHECK(ElmaArenaUsed(&A) == 32, "used not 32 after rollback");
+
+	TohruArenaDestroy(&A);
+	PASS();
+}
+
 // ---------------------------------------------------------------------------
 //  Main
 // ---------------------------------------------------------------------------
@@ -382,6 +417,8 @@ int main(void) {
 	TestYuyuArenaSet();
 	TestZeroBlockInvariant();
 	TestZeroBlockFallback();
+	TestAllocZeroed();
+	TestSnapshotRollback();
 
 	fprintf(stderr, "\nResults: %d/%d passed, %d failed\n",
 		PassCount, TestCount, FailCount);

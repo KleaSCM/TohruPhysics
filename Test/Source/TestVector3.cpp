@@ -128,6 +128,57 @@ static void TestVector3Equal(void) {
 	TEST(KannaVector3Equal(&Small, &VC) == 1, "within epsilon");
 }
 
+static void TestVector3Length(void) {
+	Setup();
+	Real L = KannaVector3Length(&VA);
+	TEST(NagisaApproxEqual(L, 3.74165738677, 1e-6), "length");
+	L = KannaVector3Length(&VC);
+	TEST(NagisaApproxZero(L, 1e-9), "length zero");
+}
+
+static void TestVector3DistanceSq(void) {
+	Setup();
+	Real D = KannaVector3DistanceSq(&VA, &VB);
+	// (3^2 + 3^2 + 3^2) = 27
+	TEST(NagisaEqual(D, 27.0), "dist sq");
+}
+
+static void TestVector3MinMax(void) {
+	Setup();
+	Vector3 M = KannaVector3Min(&VA, &VB);
+	TEST(VecApprox(1.0, 2.0, 3.0, &M), "min");
+	M = KannaVector3Max(&VA, &VB);
+	TEST(VecApprox(4.0, 5.0, 6.0, &M), "max");
+}
+
+static void TestVector3AbsNegate(void) {
+	Vector3 Neg = KannaVector3Make(-1.0, -2.0, 3.0);
+	Vector3 A = KannaVector3Abs(&Neg);
+	TEST(VecApprox(1.0, 2.0, 3.0, &A), "abs");
+	Vector3 N = KannaVector3Negate(&VA);
+	TEST(VecApprox(-1.0, -2.0, -3.0, &N), "negate");
+}
+
+static void TestVector3LerpReflect(void) {
+	Vector3 A = KannaVector3Make(0.0, 0.0, 0.0);
+	Vector3 B = KannaVector3Make(10.0, 10.0, 10.0);
+	Vector3 L = KannaVector3Lerp(&A, &B, 0.5);
+	TEST(VecApprox(5.0, 5.0, 5.0, &L), "lerp");
+
+	Vector3 V = KannaVector3Make(1.0, -1.0, 0.0);
+	Vector3 N = KannaVector3Make(0.0, 1.0, 0.0);
+	Vector3 R = KannaVector3Reflect(&V, &N);
+	TEST(VecApprox(1.0, 1.0, 0.0, &R), "reflect");
+
+	Vector3 P = KannaVector3Project(&V, &N);
+	TEST(VecApprox(0.0, -1.0, 0.0, &P), "project");
+
+	Vector3 V2 = KannaVector3Make(3.0, 4.0, 0.0);
+	Vector3 Clamped = KannaVector3ClampLength(&V2, 2.0);
+	Real Len = KannaVector3Length(&Clamped);
+	TEST(NagisaApproxEqual(Len, 2.0, 1e-6), "clamp length");
+}
+
 int main(void) {
 	fprintf(stderr, "=== TestVector3 ===\n");
 
@@ -141,6 +192,11 @@ int main(void) {
 	RUN_TEST(TestVector3Normalize);
 	RUN_TEST(TestVector3Dist);
 	RUN_TEST(TestVector3Equal);
+	RUN_TEST(TestVector3Length);
+	RUN_TEST(TestVector3DistanceSq);
+	RUN_TEST(TestVector3MinMax);
+	RUN_TEST(TestVector3AbsNegate);
+	RUN_TEST(TestVector3LerpReflect);
 
 	fprintf(stderr, "\n=== %d passed, %d failed ===\n", Passed, Failed);
 	return Failed > 0 ? 1 : 0;

@@ -6,6 +6,7 @@
  * Email: KleaSCM@gmail.com
  */
 #include <TohruPhysics/Matrix.h>
+#include <TohruPhysics/Quaternion.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -228,9 +229,46 @@ static void TestM4Inverse(void) {
 	TEST(NagisaApproxEqual(Prod.Data[15], 1.0, 1e-9), "M*inv M33");
 }
 
-// ===========================================================================
-//  Main
-// ===========================================================================
+static void TestM3Rotation(void) {
+	Real A = 1.0;
+	Matrix3x3 RX = MiorineMatrix3x3RotationX(A);
+	TEST(NagisaApproxEqual(RX.Data[0], 1.0, 1e-9), "rotX 00");
+	TEST(NagisaApproxEqual(RX.Data[4], SulettaCos(A), 1e-6), "rotX 11");
+
+	Matrix3x3 RY = MiorineMatrix3x3RotationY(A);
+	TEST(NagisaApproxEqual(RY.Data[0], SulettaCos(A), 1e-6), "rotY 00");
+
+	Matrix3x3 RZ = MiorineMatrix3x3RotationZ(A);
+	TEST(NagisaApproxEqual(RZ.Data[0], SulettaCos(A), 1e-6), "rotZ 00");
+}
+
+static void TestM3AddSub(void) {
+	Matrix3x3 A = MiorineMatrix3x3Make(1,0,0,0,1,0,0,0,1);
+	Matrix3x3 B = MiorineMatrix3x3Make(2,0,0,0,2,0,0,0,2);
+	Matrix3x3 S = MiorineMatrix3x3Add(&A, &B);
+	TEST(NagisaEqual(S.Data[0], 3.0), "add 00");
+	Matrix3x3 D = MiorineMatrix3x3Sub(&A, &B);
+	TEST(NagisaEqual(D.Data[0], -1.0), "sub 00");
+}
+
+static void TestM4TranslationTRS(void) {
+	Vector3 T = KannaVector3Make(1, 2, 3);
+	Matrix4x4 M = AnisphiaMatrix4x4Translation(&T);
+	TEST(NagisaEqual(M.Data[12], 1.0), "trans x");
+	TEST(NagisaEqual(M.Data[13], 2.0), "trans y");
+	TEST(NagisaEqual(M.Data[14], 3.0), "trans z");
+
+	Vector3 S = KannaVector3Make(2, 3, 4);
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	Matrix4x4 TRS = AnisphiaMatrix4x4TRS(&T, &Id, &S);
+	TEST(NagisaEqual(TRS.Data[0], 2.0), "trs sx");
+	TEST(NagisaEqual(TRS.Data[12], 1.0), "trs tx");
+}
+
+static void TestM4Perspective(void) {
+	Matrix4x4 P = AnisphiaMatrix4x4Perspective(REAL_PI_HALF, 1.333, 0.1, 100.0);
+	TEST(P.Data[11] == -1.0, "persp last row w");
+}
 
 int main(void) {
 	fprintf(stderr, "=== TestMatrix ===\n");
@@ -248,6 +286,10 @@ int main(void) {
 	RUN_TEST(TestM4VecMul);
 	RUN_TEST(TestM4Determinant);
 	RUN_TEST(TestM4Inverse);
+	RUN_TEST(TestM3Rotation);
+	RUN_TEST(TestM3AddSub);
+	RUN_TEST(TestM4TranslationTRS);
+	RUN_TEST(TestM4Perspective);
 
 	fprintf(stderr, "\n=== %d passed, %d failed ===\n", Passed, Failed);
 	return Failed > 0 ? 1 : 0;

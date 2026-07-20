@@ -312,6 +312,88 @@ static void TestTriangleArea(void) {
 	TEST(AE(SabinaTriangleArea(&T), 3.0, 1e-6), "tri area = 3");
 }
 
+static void TestAABBMergeExpand(void) {
+	Vector3 MinA = KannaVector3Make(0, 0, 0);
+	Vector3 MaxA = KannaVector3Make(2, 2, 2);
+	AABB A = SabinaAABBMake(&MinA, &MaxA);
+	Vector3 MinB = KannaVector3Make(3, 3, 3);
+	Vector3 MaxB = KannaVector3Make(5, 5, 5);
+	AABB B = SabinaAABBMake(&MinB, &MaxB);
+	AABB M = SabinaAABBMerge(&A, &B);
+	TEST(AE(M.Min.Data[0], 0.0, 1e-12), "merge min");
+	TEST(AE(M.Max.Data[0], 5.0, 1e-12), "merge max");
+	AABB E = SabinaAABBExpand(&A, 1.0);
+	TEST(AE(E.Min.Data[0], -1.0, 1e-12), "expand min");
+	TEST(AE(E.Max.Data[0], 3.0, 1e-12), "expand max");
+}
+
+static void TestAABBClosestPointRay(void) {
+	Vector3 Min = KannaVector3Make(0, 0, 0);
+	Vector3 Max = KannaVector3Make(10, 10, 10);
+	AABB Box = SabinaAABBMake(&Min, &Max);
+	Vector3 P = KannaVector3Make(-5, 5, 5);
+	Vector3 CP = SabinaAABBClosestPoint(&Box, &P);
+	TEST(AE(CP.Data[0], 0.0, 1e-12), "closest x=0");
+
+	Vector3 O = KannaVector3Make(-1, 5, 5);
+	Vector3 D = KannaVector3Make(1, 0, 0);
+	Ray R = SabinaRayMake(&O, &D);
+	Real T0, T1;
+	int Hit = SabinaAABBIntersectRay(&Box, &R, &T0, &T1);
+	TEST(Hit, "ray aabb hit");
+}
+
+static void TestSphereClosestPointRay(void) {
+	Vector3 C = KannaVector3Zero();
+	Sphere S = SabinaSphereMake(&C, 5.0);
+	Vector3 P = KannaVector3Make(10, 0, 0);
+	Vector3 CP = SabinaSphereClosestPoint(&S, &P);
+	TEST(AE(CP.Data[0], 5.0, 1e-6), "sphere closest x");
+
+	Vector3 O = KannaVector3Make(-10, 0, 0);
+	Vector3 D = KannaVector3Make(1, 0, 0);
+	Ray R = SabinaRayMake(&O, &D);
+	Real T0, T1;
+	int Hit = SabinaSphereIntersectRay(&S, &R, &T0, &T1);
+	TEST(Hit, "sphere ray hit");
+	TEST(AE(T0, 5.0, 1e-4), "sphere ray t0=5");
+}
+
+static void TestOBBClosestPointCorners(void) {
+	Vector3 C = KannaVector3Zero();
+	Vector3 H = KannaVector3Make(2, 2, 2);
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	OBB Box = SabinaOBBMake(&C, &H, &Id);
+	Vector3 P = KannaVector3Make(10, 0, 0);
+	Vector3 CP = SabinaOBBClosestPoint(&Box, &P);
+	TEST(AE(CP.Data[0], 2.0, 1e-12), "obb closest x=2");
+	Vector3 Corners[8];
+	SabinaOBBGetCorners(&Box, Corners);
+	TEST(AE(Corners[0].Data[0], -2.0, 1e-12), "corner 0 x");
+	TEST(AE(Corners[7].Data[0], 2.0, 1e-12), "corner 7 x");
+}
+
+static void TestRayIntersectPlaneTriangle(void) {
+	Vector3 N = KannaVector3Make(0, 1, 0);
+	Plane P = SabinaPlaneMake(&N, 5.0);
+	Vector3 O = KannaVector3Make(0, 0, 0);
+	Vector3 D = KannaVector3Make(0, 1, 0);
+	Ray R = SabinaRayMake(&O, &D);
+	Real T = SabinaRayIntersectPlane(&R, &P);
+	TEST(AE(T, 5.0, 1e-6), "ray plane t=5");
+
+	Vector3 V0 = KannaVector3Zero();
+	Vector3 V1 = KannaVector3Make(1, 0, 0);
+	Vector3 V2 = KannaVector3Make(0, 1, 0);
+	Triangle Tri = SabinaTriangleMake(&V0, &V1, &V2);
+	Vector3 O2 = KannaVector3Make(0.25, 0.25, 1);
+	Vector3 D2 = KannaVector3Make(0, 0, -1);
+	Ray R2 = SabinaRayMake(&O2, &D2);
+	Real TTri;
+	int Hit = SabinaRayIntersectTriangle(&R2, &Tri, &TTri);
+	TEST(Hit, "ray triangle hit");
+}
+
 int main(void) {
 	fprintf(stderr, "=== TestGeometry ===\n");
 
@@ -338,6 +420,11 @@ int main(void) {
 	RUN_TEST(TestTriangleMake, "Triangle: make");
 	RUN_TEST(TestTriangleNormal, "Triangle: normal");
 	RUN_TEST(TestTriangleArea, "Triangle: area");
+	RUN_TEST(TestAABBMergeExpand, "AABB: merge and expand");
+	RUN_TEST(TestAABBClosestPointRay, "AABB: closest point and ray");
+	RUN_TEST(TestSphereClosestPointRay, "Sphere: closest point and ray");
+	RUN_TEST(TestOBBClosestPointCorners, "OBB: closest point and corners");
+	RUN_TEST(TestRayIntersectPlaneTriangle, "Ray: intersect plane and triangle");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;

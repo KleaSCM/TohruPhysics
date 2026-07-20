@@ -131,6 +131,36 @@ static void TestTransformCombine(void) {
 	TEST(AE(Combined.Position.Data[1], 5.0, 1e-4), "rot+trans pos y");
 }
 
+static void TestMake(void) {
+	Vector3 P = KannaVector3Make(1, 2, 3);
+	Quaternion R = EuphylliaQuaternionMake(0, 0, 0.382683, 0.92388);
+	Transform T = KaedeTransformMake(&P, &R);
+	TEST(Vec3Equal(&T.Position, &P, 1e-12), "make pos");
+	TEST(AE(T.Rotation.Data[2], 0.382683, 1e-6), "make rot z");
+}
+
+static void TestInverse(void) {
+	Vector3 P = KannaVector3Make(10, 20, 30);
+	Quaternion QRaw = EuphylliaQuaternionMake(0.1, 0.2, 0.3, 0.9);
+	Quaternion R = EuphylliaQuaternionNormalize(&QRaw);
+	Transform T = KaedeTransformMake(&P, &R);
+	Transform Inv = KaedeTransformInverse(&T);
+	Transform Combined = KaedeTransformCombine(&T, &Inv);
+	Vector3 Zero = KannaVector3Zero();
+	TEST(Vec3Equal(&Combined.Position, &Zero, 1e-9), "inverse pos");
+	TEST(AE(Combined.Rotation.Data[3], 1.0, 1e-9), "inverse rot w");
+}
+
+static void TestSetPositionRotation(void) {
+	Transform T = KaedeTransformIdentity();
+	Vector3 P = KannaVector3Make(5, 10, 15);
+	KaedeTransformSetPosition(&T, &P);
+	TEST(Vec3Equal(&T.Position, &P, 1e-12), "set pos");
+	Quaternion R = EuphylliaQuaternionMake(0, 1, 0, 0);
+	KaedeTransformSetRotation(&T, &R);
+	TEST(AE(T.Rotation.Data[1], 1.0, 1e-12), "set rot y");
+}
+
 int main(void) {
 	fprintf(stderr, "=== TestTransform ===\n");
 
@@ -140,6 +170,9 @@ int main(void) {
 	RUN_TEST(TestTransformDirection, "TransformDirection");
 	RUN_TEST(TestInverseTransformDirection, "InverseTransformDirection round-trip");
 	RUN_TEST(TestTransformCombine, "TransformCombine");
+	RUN_TEST(TestMake, "KaedeTransformMake");
+	RUN_TEST(TestInverse, "KaedeTransformInverse");
+	RUN_TEST(TestSetPositionRotation, "SetPosition / SetRotation");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;

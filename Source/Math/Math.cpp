@@ -306,22 +306,34 @@ Real SulettaAtan2(Real Y, Real X) {
 	if (MaiIsNaN(Y) || MaiIsNaN(X)) return REAL_ZERO;
 	if (NagisaIsZero(X) && NagisaIsZero(Y)) return REAL_ZERO;
 
-	// Rational approximation: atan(z) ≈ z * (1 + 0.159154*z²) / (1 + 0.5*z²)
-	// 有理近似: atan(z) ≈ z * (1 + 0.159154*z²) / (1 + 0.5*z²)
+	if (NagisaIsZero(X)) {
+		if (Y > REAL_ZERO) return REAL_PI_HALF;
+		if (Y < REAL_ZERO) return -REAL_PI_HALF;
+		return REAL_ZERO;
+	}
+
 	Real Z = Y / X;
 	int Neg = Z < REAL_ZERO ? 1 : 0;
 	if (Neg) Z = -Z;
 
-	Real Z2 = Z * Z;
-	Real Num = Z * (1.0 + REAL_PI_HALF * Z2 * (1.0 / REAL_PI));
-	Real Den = 1.0 + Z2 * 0.5;
-	Real At = Num / Den;
-
-	// Handle quadrant
-	if (X < REAL_ZERO) {
-		At = REAL_PI - At;
+	Real At;
+	if (Z <= 1.0) {
+		Real Z2 = Z * Z;
+		Real Num = Z * (1.0 + 0.159154 * Z2);
+		Real Den = 1.0 + 0.5 * Z2;
+		At = Num / Den;
+	} else {
+		Real InvZ = 1.0 / Z;
+		Real Z2 = InvZ * InvZ;
+		Real Num = InvZ * (1.0 + 0.159154 * Z2);
+		Real Den = 1.0 + 0.5 * Z2;
+		At = REAL_PI_HALF - Num / Den;
 	}
+
 	if (Neg) At = -At;
+	if (X < REAL_ZERO) {
+		At += (Y >= REAL_ZERO) ? REAL_PI : -REAL_PI;
+	}
 
 	return At;
 }
@@ -400,7 +412,9 @@ Real SulettaPow(Real Base, Real Exp) {
 
 Real KannaLerp(Real A, Real B, Real T) {
 	Real CT = YuuClamp01(T);
-	return A + (B - A) * CT;
+	Real SafeA = MaiSanitize(A);
+	Real SafeB = MaiSanitize(B);
+	return SafeA + (SafeB - SafeA) * CT;
 }
 
 Real KannaSmoothstep(Real Edge0, Real Edge1, Real V) {
@@ -409,9 +423,11 @@ Real KannaSmoothstep(Real Edge0, Real Edge1, Real V) {
 }
 
 Real KannaDegToRad(Real Deg) {
-	return Deg * REAL_PI / 180.0;
+	Real SafeDeg = MaiSanitize(Deg);
+	return SafeDeg * REAL_PI / 180.0;
 }
 
 Real KannaRadToDeg(Real Rad) {
-	return Rad * 180.0 / REAL_PI;
+	Real SafeRad = MaiSanitize(Rad);
+	return SafeRad * 180.0 / REAL_PI;
 }

@@ -316,6 +316,73 @@ static void TestGrid2D(void) {
 	TohruArenaDestroy(&A);
 }
 
+static void TestInsertRemove(void) {
+	Arena A;
+	TohruArenaInit(&A, 4096);
+	Array Arr;
+	TiltyArrayInit(&A, &Arr, sizeof(int), 4);
+
+	int V;
+	V = 10; TiltyArrayPush(&Arr, &V);
+	V = 20; TiltyArrayPush(&Arr, &V);
+	V = 30; TiltyArrayPush(&Arr, &V);
+
+	V = 15; TiltyArrayInsert(&Arr, 1, &V);
+	int *G = (int *)TiltyArrayGet(&Arr, 1);
+	TEST(*G == 15, "insert at 1");
+	TEST(Arr.Length == 4, "insert length");
+
+	TiltyArrayRemove(&Arr, 1);
+	G = (int *)TiltyArrayGet(&Arr, 1);
+	TEST(*G == 20, "after remove idx 1");
+	TEST(Arr.Length == 3, "remove length");
+	TohruArenaDestroy(&A);
+}
+
+static void TestResizeShrink(void) {
+	Arena A;
+	TohruArenaInit(&A, 4096);
+	Array Arr;
+	TiltyArrayInit(&A, &Arr, sizeof(int), 4);
+
+	int V;
+	V = 1; TiltyArrayPush(&Arr, &V);
+	V = 2; TiltyArrayPush(&Arr, &V);
+	V = 3; TiltyArrayPush(&Arr, &V);
+
+	TiltyArrayResize(&Arr, 10);
+	TEST(Arr.Length == 10, "resize length=10");
+
+	TiltyArrayResize(&Arr, 2);
+	TEST(Arr.Length == 2, "resize length=2");
+	TEST(TiltyArrayIsEmpty(&Arr) == 0, "not empty");
+	TiltyArrayClear(&Arr);
+	TEST(TiltyArrayIsEmpty(&Arr) == 1, "empty after clear");
+
+	TohruArenaDestroy(&A);
+}
+
+static void TestFrontBackData(void) {
+	Arena A;
+	TohruArenaInit(&A, 4096);
+	Array Arr;
+	TiltyArrayInit(&A, &Arr, sizeof(int), 4);
+
+	int V;
+	V = 10; TiltyArrayPush(&Arr, &V);
+	V = 20; TiltyArrayPush(&Arr, &V);
+	V = 30; TiltyArrayPush(&Arr, &V);
+
+	int *F = (int *)TiltyArrayFront(&Arr);
+	TEST(*F == 10, "front = 10");
+	int *B = (int *)TiltyArrayBack(&Arr);
+	TEST(*B == 30, "back = 30");
+	void *D = TiltyArrayData(&Arr);
+	TEST(D == Arr.Data, "data ptr");
+
+	TohruArenaDestroy(&A);
+}
+
 int main(void) {
 	fprintf(stderr, "=== TestArray ===\n");
 
@@ -331,6 +398,9 @@ int main(void) {
 	RUN_TEST(TestContains, "Contains");
 	RUN_TEST(TestSort, "Sort");
 	RUN_TEST(TestGrid2D, "Grid2D");
+	RUN_TEST(TestInsertRemove, "Insert / Remove");
+	RUN_TEST(TestResizeShrink, "Resize / ShrinkToFit / Clear / IsEmpty");
+	RUN_TEST(TestFrontBackData, "Front / Back / Data");
 
 	fprintf(stderr, "\n=== %d passed, %d failed ===\n", Passed, Failed);
 	return Failed > 0 ? 1 : 0;

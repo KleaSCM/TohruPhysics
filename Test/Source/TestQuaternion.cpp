@@ -133,6 +133,39 @@ static void TestSlerp(void) {
 	TEST(AE(SA.Data[3], 1.0, 1e-6), "slerp self = self");
 }
 
+static void TestLength(void) {
+	Quaternion Q = EuphylliaQuaternionMake(1, 0, 0, 0);
+	Real L = EuphylliaQuaternionLength(&Q);
+	TEST(AE(L, 1.0, 1e-6), "length unit x");
+}
+
+static void TestFromAxisAngle(void) {
+	Vector3 Axis = KannaVector3Make(0, 1, 0);
+	Quaternion Q = EuphylliaQuaternionFromAxisAngle(&Axis, REAL_PI);
+	// 180° about Y: x = 0, y = 1, z = 0, w = cos(90°) ≈ 0
+	TEST(AE(Q.Data[0], 0.0, 1e-4), "axisAngle x");
+	TEST(AE(Q.Data[1], 1.0, 1e-4), "axisAngle y");
+	TEST(NagisaApproxZero(Q.Data[3], 1e-4), "axisAngle w ~ 0");
+}
+
+static void TestLerpNLerp(void) {
+	Quaternion I = EuphylliaQuaternionIdentity();
+	Quaternion Q = EuphylliaQuaternionMake(0, 1, 0, 0);
+	Quaternion L = EuphylliaQuaternionLerp(&I, &Q, 0.5);
+	TEST(AE(L.Data[1], 0.5, 1e-6), "lerp y=0.5");
+	Quaternion N = EuphylliaQuaternionNLerp(&I, &Q, 0.5);
+	Real Len = SulettaSqrt(EuphylliaQuaternionLengthSq(&N));
+	TEST(AE(Len, 1.0, 1e-6), "nlerp unit");
+}
+
+static void TestInverse(void) {
+	Quaternion Q = EuphylliaQuaternionMake(1, 0, 0, 1);
+	Q = EuphylliaQuaternionNormalize(&Q);
+	Quaternion Inv = EuphylliaQuaternionInverse(&Q);
+	Quaternion Prod = EuphylliaQuaternionMul(&Q, &Inv);
+	TEST(AE(Prod.Data[3], 1.0, 1e-6), "Q*inv(Q) w=1");
+}
+
 int main(void) {
 	fprintf(stderr, "=== TestQuaternion ===\n");
 
@@ -145,6 +178,10 @@ int main(void) {
 	RUN_TEST(TestMatrix3x3ToQuaternion);
 	RUN_TEST(TestConjugate);
 	RUN_TEST(TestSlerp);
+	RUN_TEST(TestLength);
+	RUN_TEST(TestFromAxisAngle);
+	RUN_TEST(TestLerpNLerp);
+	RUN_TEST(TestInverse);
 
 	fprintf(stderr, "\n=== %d passed, %d failed ===\n", Passed, Failed);
 	return Failed > 0 ? 1 : 0;
