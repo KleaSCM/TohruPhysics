@@ -581,9 +581,9 @@ Defensive Programming --> Performance --> Safety
 - [x] 0095. Implement structural property state models managing coefficient metrics for elastic bouncing.
 - [x] 0096. Implement structural property state models managing friction coefficients across surface types.
 - [x] 0097. Write kinematic body configuration metrics bypassing standard force resolution fields.
-- [ ] 0098. Implement active body state sleeping variables tracking low-energy systems defensively.
-- [ ] 0099. Implement external gravitational field configuration maps handling constant force metrics.
-- [ ] 0100. Write linear damping equations to control unchecked velocity increases over prolonged execution.
+- [x] 0098. Implement active body state sleeping variables tracking low-energy systems defensively.
+- [x] 0099. Implement external gravitational field configuration maps handling constant force metrics.
+- [x] 0100. Write linear damping equations to control unchecked velocity increases over prolonged execution.
 
 #### 1.12 Collision Detection Primitives - Core Intersection Tests
 - [ ] 0101. Implement `IntersectSphereSphere` detection using squared distance comparisons against combined radii.

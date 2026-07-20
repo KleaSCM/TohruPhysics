@@ -162,9 +162,39 @@ static void TestBodyConfigMakeStatic(void) {
 	TEST(AE(C.Mass.InverseMass, 0.0, 1e-12), "static inv mass = 0");
 }
 
-// ===========================================================================
-//  Main
-// ===========================================================================
+static void TestSleepUpdate(void) {
+	SleepConfig Sleep = YuiSleepConfigMake(0.5, 0.5, 2.0);
+	RigidBodyState S = YuiRigidBodyStateZero();
+	S.LinearVelocity = KannaVector3Make(100, 0, 0);
+
+	// High velocity — should not sleep
+	int ShouldSleep = YuiSleepUpdate(&Sleep, &S, 1.0);
+	TEST(ShouldSleep == 0, "no sleep at high velocity");
+	TEST(AE(Sleep.Timer, 0.0, 1e-12), "timer reset");
+
+	// Zero velocity — should accumulate timer
+	S.LinearVelocity = KannaVector3Zero();
+	ShouldSleep = YuiSleepUpdate(&Sleep, &S, 1.0);
+	TEST(ShouldSleep == 0, "not yet: 1s < 2s dwell");
+	TEST(AE(Sleep.Timer, 1.0, 1e-6), "timer = 1s");
+
+	ShouldSleep = YuiSleepUpdate(&Sleep, &S, 1.0);
+	TEST(ShouldSleep == 1, "sleep after 2s");
+}
+
+static void TestApplyGravity(void) {
+	KinematicConfig Kin = YuiKinematicConfigMake(BodyType_Dynamic, 1.0);
+	GravityField Grav = YuiGravityFieldMake(0, -9.81, 0, 1.0);
+	RigidBodyState S = YuiRigidBodyStateZero();
+	YuiApplyGravity(&Grav, &Kin, &S, 1.0);
+	TEST(AE(S.LinearVelocity.Data[1], -9.81, 1e-6), "gravity applied");
+
+	// Kinematic body — no gravity
+	Kin.Type = BodyType_Kinematic;
+	S.LinearVelocity = KannaVector3Zero();
+	YuiApplyGravity(&Grav, &Kin, &S, 1.0);
+	TEST(AE(S.LinearVelocity.Data[1], 0.0, 1e-12), "kinematic no gravity");
+}
 
 int main(void) {
 	fprintf(stderr, "=== TestBodyState ===\n");
@@ -181,6 +211,8 @@ int main(void) {
 	RUN_TEST(TestKinematicConfig, "KinematicConfig: make");
 	RUN_TEST(TestBodyConfigMakeDynamic, "BodyConfig: dynamic");
 	RUN_TEST(TestBodyConfigMakeStatic, "BodyConfig: static");
+	RUN_TEST(TestSleepUpdate, "SleepConfig: update");
+	RUN_TEST(TestApplyGravity, "GravityField: apply");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;

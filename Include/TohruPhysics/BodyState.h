@@ -178,8 +178,18 @@ typedef struct {
 typedef struct {
 	Real  LinearThreshold;
 	Real  AngularThreshold;
-	Real  DwellTime;  // seconds below threshold before sleeping
+	Real  DwellTime;
+	Real  Timer;  // accumulated time below threshold
 } SleepConfig;
+
+// ---------------------------------------------------------------------------
+//  GravityField — per-body gravity configuration
+//  重力場の設定ね。
+// ---------------------------------------------------------------------------
+typedef struct {
+	Vector3 Acceleration;   // m/s²  (e.g. {0, -9.81, 0})
+	Real    DefaultScale;   // default gravity scale for new bodies
+} GravityField;
 
 // ---------------------------------------------------------------------------
 //  0095–0096: MaterialConfig — surface properties with combine mode
@@ -254,6 +264,13 @@ void        YuiVelocityCapApply(VelocityCap *Cap, RigidBodyState *S);
 // ---- SleepConfig ----
 SleepConfig YuiSleepConfigMake(Real LinearThreshold, Real AngularThreshold, Real DwellTime);
 SleepConfig YuiSleepConfigZero(void);
+int         YuiSleepUpdate(SleepConfig *Sleep, const RigidBodyState *State, Real Dt);
+
+// ---- GravityField ----
+GravityField YuiGravityFieldMake(Real X, Real Y, Real Z, Real DefaultScale);
+GravityField YuiGravityFieldDefault(void);
+void         YuiApplyGravity(const GravityField *Field, const KinematicConfig *Kin,
+                             RigidBodyState *State, Real Dt);
 
 // ---- MaterialConfig ----
 MaterialConfig YuiMaterialConfigMake(

@@ -121,3 +121,29 @@ Vector3  SabinaTriangleClosestPoint(const Triangle *T, const Vector3 *P);
 void     SabinaTriangleBarycentric(const Triangle *T, const Vector3 *P, Real *U, Real *V, Real *W);
 int      SabinaTriangleContains(const Triangle *T, const Vector3 *P);
 int      SabinaTriangleIntersectRay(const Triangle *T, const Ray *R, Real *TOut);
+
+// ===========================================================================
+//  Intersect — cross-type intersection tests (Section 1.12)
+//  クロスタイプ交差テストね。
+// ===========================================================================
+
+// 0101
+int IntersectSphereSphere(const Sphere *A, const Sphere *B);
+// 0102
+int IntersectSphereAABB(const Sphere *S, const AABB *Box);
+// 0103
+int IntersectSpherePlane(const Sphere *S, const Plane *P);
+// 0104
+int IntersectSphereCapsule(const Sphere *S, const Capsule *C);
+// 0105
+int IntersectAABBAABB(const AABB *A, const AABB *B);
+// 0106
+int IntersectAABBPlane(const AABB *Box, const Plane *P);
+// 0107
+int IntersectAABBOBB(const AABB *Box, const OBB *O);
+// 0108
+int IntersectOBBOBB(const OBB *A, const OBB *B);
+// 0109
+int IntersectOBBPlane(const OBB *O, const Plane *P);
+// 0110
+int IntersectCapsuleCapsule(const Capsule *A, const Capsule *B);

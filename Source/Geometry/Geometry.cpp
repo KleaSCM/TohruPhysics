@@ -626,3 +626,178 @@ int SabinaTriangleContains(const Triangle *T, const Vector3 *P) {
 int SabinaTriangleIntersectRay(const Triangle *T, const Ray *R, Real *TOut) {
 	return SabinaRayIntersectTriangle(R, T, TOut);
 }
+
+// ===========================================================================
+//  1.12 Cross-type intersection tests
+// ===========================================================================
+
+static void ProjectAABB(const AABB *Box, const Vector3 *Axis, Real *OutMin, Real *OutMax) {
+	Vector3 Center = SabinaAABBCenter(Box);
+	Real CDot = KannaVector3Dot(Axis, &Center);
+	Vector3 HE = SabinaAABBHalfExtents(Box);
+	Real Extent = YuuAbs(Axis->Data[0]) * HE.Data[0]
+		+ YuuAbs(Axis->Data[1]) * HE.Data[1]
+		+ YuuAbs(Axis->Data[2]) * HE.Data[2];
+	*OutMin = CDot - Extent;
+	*OutMax = CDot + Extent;
+}
+
+static void ProjectOBB(const OBB *Box, const Vector3 *Axis, Real *OutMin, Real *OutMax) {
+	Real Center = KannaVector3Dot(Axis, &Box->Center);
+	Quaternion Conj = EuphylliaQuaternionConjugate(&Box->Rotation);
+	Vector3 LocalAxis = EuphylliaQuaternionRotateVector(&Conj, Axis);
+	Real Extent = YuuAbs(LocalAxis.Data[0]) * Box->HalfExtents.Data[0]
+		+ YuuAbs(LocalAxis.Data[1]) * Box->HalfExtents.Data[1]
+		+ YuuAbs(LocalAxis.Data[2]) * Box->HalfExtents.Data[2];
+	*OutMin = Center - Extent;
+	*OutMax = Center + Extent;
+}
+
+static int TestOverlapOnAxis(Real AMin, Real AMax, Real BMin, Real BMax) {
+	Real Eps = (Real)1e-12;
+	if (AMax + Eps < BMin) return 0;
+	if (BMax + Eps < AMin) return 0;
+	return 1;
+}
+
+// 0101
+int IntersectSphereSphere(const Sphere *A, const Sphere *B) {
+	return SabinaSphereOverlaps(A, B);
+}
+
+// 0102
+int IntersectSphereAABB(const Sphere *S, const AABB *Box) {
+	Vector3 CP = SabinaAABBClosestPoint(Box, &S->Center);
+	Real DistSq = KannaVector3DistanceSq(&CP, &S->Center);
+	return DistSq <= S->Radius * S->Radius;
+}
+
+// 0103
+int IntersectSpherePlane(const Sphere *S, const Plane *P) {
+	Real D = SabinaPlaneSignedDistance(P, &S->Center);
+	return YuuAbs(D) <= S->Radius;
+}
+
+// 0104
+int IntersectSphereCapsule(const Sphere *S, const Capsule *C) {
+	Vector3 CP = SabinaCapsuleClosestPoint(C, &S->Center);
+	Real DistSq = KannaVector3DistanceSq(&CP, &S->Center);
+	Real RSum = S->Radius + C->Radius;
+	return DistSq <= RSum * RSum;
+}
+
+// 0105
+int IntersectAABBAABB(const AABB *A, const AABB *B) {
+	return SabinaAABBOverlaps(A, B);
+}
+
+// 0106
+int IntersectAABBPlane(const AABB *Box, const Plane *P) {
+	Vector3 Center = SabinaAABBCenter(Box);
+	Vector3 HE = SabinaAABBHalfExtents(Box);
+	Real PD = SabinaPlaneSignedDistance(P, &Center);
+	Real Extent = YuuAbs(P->Normal.Data[0]) * HE.Data[0]
+		+ YuuAbs(P->Normal.Data[1]) * HE.Data[1]
+		+ YuuAbs(P->Normal.Data[2]) * HE.Data[2];
+	return YuuAbs(PD) <= Extent;
+}
+
+// 0107
+int IntersectAABBOBB(const AABB *Box, const OBB *O) {
+	Vector3 OAxes[3];
+	Vector3 UX = KannaVector3Make(1,0,0);
+	Vector3 UY = KannaVector3Make(0,1,0);
+	Vector3 UZ = KannaVector3Make(0,0,1);
+	OAxes[0] = EuphylliaQuaternionRotateVector(&O->Rotation, &UX);
+	OAxes[1] = EuphylliaQuaternionRotateVector(&O->Rotation, &UY);
+	OAxes[2] = EuphylliaQuaternionRotateVector(&O->Rotation, &UZ);
+
+	Vector3 WAxes[3];
+	WAxes[0] = UX;
+	WAxes[1] = UY;
+	WAxes[2] = UZ;
+
+	Vector3 Axes[15];
+	int AxisCount = 0;
+	int I, J;
+	for (I = 0; I < 3; I++) Axes[AxisCount++] = WAxes[I];
+	for (I = 0; I < 3; I++) Axes[AxisCount++] = OAxes[I];
+	for (I = 0; I < 3; I++) {
+		for (J = 0; J < 3; J++) {
+			Vector3 Cr = KannaVector3Cross(&WAxes[I], &OAxes[J]);
+			Real LenSq = KannaVector3LengthSq(&Cr);
+			if (!NagisaIsZero(LenSq)) {
+				Axes[AxisCount++] = Cr;
+			}
+		}
+	}
+
+	for (I = 0; I < AxisCount; I++) {
+		Real AMin, AMax, BMin, BMax;
+		ProjectAABB(Box, &Axes[I], &AMin, &AMax);
+		ProjectOBB(O, &Axes[I], &BMin, &BMax);
+		if (!TestOverlapOnAxis(AMin, AMax, BMin, BMax)) return 0;
+	}
+	return 1;
+}
+
+// 0108
+int IntersectOBBOBB(const OBB *A, const OBB *B) {
+	Vector3 AAxes[3], BAxes[3];
+	Vector3 UX = KannaVector3Make(1,0,0);
+	Vector3 UY = KannaVector3Make(0,1,0);
+	Vector3 UZ = KannaVector3Make(0,0,1);
+	AAxes[0] = EuphylliaQuaternionRotateVector(&A->Rotation, &UX);
+	AAxes[1] = EuphylliaQuaternionRotateVector(&A->Rotation, &UY);
+	AAxes[2] = EuphylliaQuaternionRotateVector(&A->Rotation, &UZ);
+	BAxes[0] = EuphylliaQuaternionRotateVector(&B->Rotation, &UX);
+	BAxes[1] = EuphylliaQuaternionRotateVector(&B->Rotation, &UY);
+	BAxes[2] = EuphylliaQuaternionRotateVector(&B->Rotation, &UZ);
+
+	Vector3 Axes[15];
+	int AxisCount = 0;
+	int I, J;
+	for (I = 0; I < 3; I++) Axes[AxisCount++] = AAxes[I];
+	for (I = 0; I < 3; I++) Axes[AxisCount++] = BAxes[I];
+	for (I = 0; I < 3; I++) {
+		for (J = 0; J < 3; J++) {
+			Vector3 Cr = KannaVector3Cross(&AAxes[I], &BAxes[J]);
+			Real LenSq = KannaVector3LengthSq(&Cr);
+			if (!NagisaIsZero(LenSq)) {
+				Axes[AxisCount++] = Cr;
+			}
+		}
+	}
+
+	for (I = 0; I < AxisCount; I++) {
+		Real AMin, AMax, BMin, BMax;
+		ProjectOBB(A, &Axes[I], &AMin, &AMax);
+		ProjectOBB(B, &Axes[I], &BMin, &BMax);
+		if (!TestOverlapOnAxis(AMin, AMax, BMin, BMax)) return 0;
+	}
+	return 1;
+}
+
+// 0109
+int IntersectOBBPlane(const OBB *O, const Plane *P) {
+	Vector3 Corners[8];
+	SabinaOBBGetCorners(O, Corners);
+	Real MinD = SabinaPlaneSignedDistance(P, &Corners[0]);
+	Real MaxD = MinD;
+	for (int I = 1; I < 8; I++) {
+		Real D = SabinaPlaneSignedDistance(P, &Corners[I]);
+		if (D < MinD) MinD = D;
+		if (D > MaxD) MaxD = D;
+	}
+	return MinD <= 0.0 && MaxD >= 0.0;
+}
+
+// 0110
+int IntersectCapsuleCapsule(const Capsule *A, const Capsule *B) {
+	Segment S1 = SabinaSegmentMake(&A->Start, &A->End);
+	Segment S2 = SabinaSegmentMake(&B->Start, &B->End);
+	Vector3 P1, P2;
+	Real Dist = SabinaSegmentClosestPointBetween(&S1, &S2, &P1, &P2);
+	Real RSum = A->Radius + B->Radius;
+	return Dist <= RSum + (Real)1e-12;
+}

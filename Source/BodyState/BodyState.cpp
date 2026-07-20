@@ -238,11 +238,52 @@ SleepConfig YuiSleepConfigMake(Real LinearThreshold, Real AngularThreshold, Real
 	S.LinearThreshold = LinearThreshold >= REAL_ZERO ? LinearThreshold : REAL_ZERO;
 	S.AngularThreshold = AngularThreshold >= REAL_ZERO ? AngularThreshold : REAL_ZERO;
 	S.DwellTime = DwellTime >= REAL_ZERO ? DwellTime : REAL_ZERO;
+	S.Timer = REAL_ZERO;
 	return S;
 }
 
 SleepConfig YuiSleepConfigZero(void) {
 	return YuiSleepConfigMake(REAL_ZERO, REAL_ZERO, REAL_ZERO);
+}
+
+int YuiSleepUpdate(SleepConfig *Sleep, const RigidBodyState *State, Real Dt) {
+	Real LinLen = KannaVector3Length(&State->LinearVelocity);
+	Real AngLen = KannaVector3Length(&State->AngularVelocity);
+
+	if (LinLen < Sleep->LinearThreshold && AngLen < Sleep->AngularThreshold) {
+		Sleep->Timer += Dt;
+		if (Sleep->Timer >= Sleep->DwellTime) {
+			return 1;
+		}
+	} else {
+		Sleep->Timer = REAL_ZERO;
+	}
+	return 0;
+}
+
+// ===========================================================================
+//  GravityField
+// ===========================================================================
+
+GravityField YuiGravityFieldMake(Real X, Real Y, Real Z, Real DefaultScale) {
+	GravityField F;
+	F.Acceleration = KannaVector3Make(X, Y, Z);
+	F.DefaultScale = DefaultScale;
+	return F;
+}
+
+GravityField YuiGravityFieldDefault(void) {
+	return YuiGravityFieldMake(0.0, -9.81, 0.0, 1.0);
+}
+
+void YuiApplyGravity(const GravityField *Field, const KinematicConfig *Kin,
+                     RigidBodyState *State, Real Dt)
+{
+	if (Kin->Type != BodyType_Dynamic) return;
+
+	Real Scale = Kin->GravityScale;
+	Vector3 Gravity = KannaVector3Scale(&Field->Acceleration, Scale * Dt);
+	State->LinearVelocity = KannaVector3Add(&State->LinearVelocity, &Gravity);
 }
 
 // ===========================================================================
