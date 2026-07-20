@@ -634,6 +634,124 @@ static void TestIntersectSegmentPlane(void) {
 	TEST(TOut >= 0 && TOut <= 1, "seg-plane t in [0,1]");
 }
 
+// ===========================================================================
+//  1.14 ClosestPoint / Distance tests
+// ===========================================================================
+
+static void TestClosestPointPointSphere(void) {
+	Vector3 C = KannaVector3Make(0,0,0);
+	Sphere S = SabinaSphereMake(&C, 5.0);
+	Vector3 Inside = KannaVector3Make(2,0,0);
+	Vector3 CP = ClosestPointPointSphere(&S, &Inside);
+	// Inside point → stays at position
+	TEST(AE(CP.Data[0], 2.0, 1e-12), "cp sphere inside");
+
+	Vector3 Outside = KannaVector3Make(10,0,0);
+	CP = ClosestPointPointSphere(&S, &Outside);
+	// Outside point → projected to surface at (5,0,0)
+	TEST(AE(CP.Data[0], 5.0, 1e-6), "cp sphere surface");
+}
+
+static void TestClosestPointPointAABB(void) {
+	Vector3 Min = KannaVector3Make(0,0,0);
+	Vector3 Max = KannaVector3Make(10,10,10);
+	AABB Box = SabinaAABBMake(&Min, &Max);
+	Vector3 P = KannaVector3Make(-5, 5, 5);
+	Vector3 CP = ClosestPointPointAABB(&Box, &P);
+	TEST(AE(CP.Data[0], 0.0, 1e-12), "cp aabb clamped x=0");
+}
+
+static void TestClosestPointPointOBB(void) {
+	Vector3 C = KannaVector3Zero();
+	Vector3 HE = KannaVector3Make(2,2,2);
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	OBB Box = SabinaOBBMake(&C, &HE, &Id);
+	Vector3 P = KannaVector3Make(10,0,0);
+	Vector3 CP = ClosestPointPointOBB(&Box, &P);
+	TEST(AE(CP.Data[0], 2.0, 1e-12), "cp obb clamped x=2");
+}
+
+static void TestClosestPointPointCapsule(void) {
+	Vector3 CS = KannaVector3Make(0,0,0);
+	Vector3 CE = KannaVector3Make(0,10,0);
+	Capsule Cap = SabinaCapsuleMake(&CS, &CE, 2.0);
+	Vector3 P = KannaVector3Make(5,5,0);
+	Vector3 CP = ClosestPointPointCapsule(&Cap, &P);
+	Vector3 AxisPt = KannaVector3Make(0,5,0);
+	Vector3 Diff = KannaVector3Sub(&CP, &AxisPt);
+	Real D = KannaVector3Length(&Diff);
+	TEST(AE(D, 2.0, 1e-4), "cp capsule dist = radius");
+}
+
+static void TestClosestPointPointPlane(void) {
+	Vector3 N = KannaVector3Make(0,1,0);
+	Plane P = SabinaPlaneMake(&N, 5.0);
+	Vector3 Pt = KannaVector3Make(0,10,0);
+	Vector3 CP = ClosestPointPointPlane(&P, &Pt);
+	TEST(AE(CP.Data[1], 5.0, 1e-12), "cp plane y=5");
+}
+
+static void TestClosestPointPointTriangle(void) {
+	Vector3 V0 = KannaVector3Zero();
+	Vector3 V1 = KannaVector3Make(1,0,0);
+	Vector3 V2 = KannaVector3Make(0,1,0);
+	Triangle T = SabinaTriangleMake(&V0, &V1, &V2);
+	Vector3 P = KannaVector3Make(0.25, 0.25, 0);
+	Vector3 CP = ClosestPointPointTriangle(&T, &P);
+	TEST(AE(CP.Data[0], 0.25, 1e-12), "cp triangle x=0.25");
+	TEST(AE(CP.Data[1], 0.25, 1e-12), "cp triangle y=0.25");
+}
+
+static void TestDistanceSphereSphere(void) {
+	Vector3 C0 = KannaVector3Zero();
+	Vector3 C1 = KannaVector3Make(10,0,0);
+	Sphere A = SabinaSphereMake(&C0, 3.0);
+	Sphere B = SabinaSphereMake(&C1, 2.0);
+	Real D = DistanceSphereSphere(&A, &B);
+	// Centers 10 apart, radii 3+2=5 → distance = 10-5 = 5
+	TEST(AE(D, 5.0, 1e-6), "dist sphere-sphere = 5");
+
+	Sphere C = SabinaSphereMake(&C0, 10.0);
+	D = DistanceSphereSphere(&A, &C);
+	// Overlapping → 0
+	TEST(AE(D, 0.0, 1e-12), "dist sphere-sphere overlap = 0");
+}
+
+static void TestDistanceAABBAABB(void) {
+	Vector3 MinA = KannaVector3Make(0,0,0);
+	Vector3 MaxA = KannaVector3Make(2,2,2);
+	Vector3 MinB = KannaVector3Make(5,0,0);
+	Vector3 MaxB = KannaVector3Make(7,2,2);
+	AABB A = SabinaAABBMake(&MinA, &MaxA);
+	AABB B = SabinaAABBMake(&MinB, &MaxB);
+	Real D = DistanceAABBAABB(&A, &B);
+	TEST(AE(D, 3.0, 1e-6), "dist aabb-aabb = 3");
+
+	// Overlapping → 0
+	Vector3 Tmp3 = KannaVector3Make(3,3,3);
+	AABB C = SabinaAABBMake(&MinA, &Tmp3);
+	D = DistanceAABBAABB(&A, &C);
+	TEST(AE(D, 0.0, 1e-12), "dist aabb-aabb overlap = 0");
+}
+
+static void TestDistanceOBBOBB(void) {
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	Vector3 C0 = KannaVector3Make(0,0,0);
+	Vector3 C1 = KannaVector3Make(10,0,0);
+	Vector3 HE = KannaVector3Make(1,1,1);
+	OBB A = SabinaOBBMake(&C0, &HE, &Id);
+	OBB B = SabinaOBBMake(&C1, &HE, &Id);
+	Real D = DistanceOBBOBB(&A, &B);
+	// Centers 10 apart, each half extends 1 → gap = 10-2 = 8
+	TEST(AE(D, 8.0, 1e-6), "dist obb-obb = 8");
+
+	// Overlapping → negative
+	Vector3 H5 = KannaVector3Make(5,5,5);
+	OBB C = SabinaOBBMake(&C0, &H5, &Id);
+	D = DistanceOBBOBB(&A, &C);
+	TEST(D < REAL_ZERO, "dist obb-obb overlap negative");
+}
+
 int main(void) {
 	fprintf(stderr, "=== TestGeometry ===\n");
 
@@ -684,6 +802,15 @@ int main(void) {
 	RUN_TEST(TestIntersectSegmentAABB, "IntersectSegment: AABB");
 	RUN_TEST(TestIntersectSegmentOBB, "IntersectSegment: OBB");
 	RUN_TEST(TestIntersectSegmentPlane, "IntersectSegment: Plane");
+	RUN_TEST(TestClosestPointPointSphere, "ClosestPoint: Point-Sphere");
+	RUN_TEST(TestClosestPointPointAABB, "ClosestPoint: Point-AABB");
+	RUN_TEST(TestClosestPointPointOBB, "ClosestPoint: Point-OBB");
+	RUN_TEST(TestClosestPointPointCapsule, "ClosestPoint: Point-Capsule");
+	RUN_TEST(TestClosestPointPointPlane, "ClosestPoint: Point-Plane");
+	RUN_TEST(TestClosestPointPointTriangle, "ClosestPoint: Point-Triangle");
+	RUN_TEST(TestDistanceSphereSphere, "Distance: Sphere-Sphere");
+	RUN_TEST(TestDistanceAABBAABB, "Distance: AABB-AABB");
+	RUN_TEST(TestDistanceOBBOBB, "Distance: OBB-OBB");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;

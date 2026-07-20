@@ -984,3 +984,125 @@ int IntersectSegmentPlane(const Segment *Seg, const Plane *P, Real *TOut) {
 	*TOut = D0 / Denom;
 	return 1;
 }
+
+// ===========================================================================
+//  1.14 Closest Point / Distance queries
+// ===========================================================================
+
+// 0121
+Vector3 ClosestPointPointSphere(const Sphere *S, const Vector3 *P) {
+	return SabinaSphereClosestPoint(S, P);
+}
+
+// 0122
+Vector3 ClosestPointPointAABB(const AABB *Box, const Vector3 *P) {
+	return SabinaAABBClosestPoint(Box, P);
+}
+
+// 0123
+Vector3 ClosestPointPointOBB(const OBB *Box, const Vector3 *P) {
+	return SabinaOBBClosestPoint(Box, P);
+}
+
+// 0124
+Vector3 ClosestPointPointCapsule(const Capsule *C, const Vector3 *P) {
+	return SabinaCapsuleClosestPoint(C, P);
+}
+
+// 0125
+Vector3 ClosestPointPointPlane(const Plane *Pl, const Vector3 *Pt) {
+	Real SD = SabinaPlaneSignedDistance(Pl, Pt);
+	Vector3 Offset = KannaVector3Scale(&Pl->Normal, SD);
+	return KannaVector3Sub(Pt, &Offset);
+}
+
+// 0126
+Vector3 ClosestPointPointTriangle(const Triangle *T, const Vector3 *P) {
+	return SabinaTriangleClosestPoint(T, P);
+}
+
+// 0127
+Real ClosestPointSegmentSegment(const Segment *S1, const Segment *S2, Vector3 *P1, Vector3 *P2) {
+	return SabinaSegmentClosestPointBetween(S1, S2, P1, P2);
+}
+
+// 0128
+Real DistanceSphereSphere(const Sphere *A, const Sphere *B) {
+	Real Dist = KannaVector3Distance(&A->Center, &B->Center);
+	Real RSum = A->Radius + B->Radius;
+	return Dist > RSum ? Dist - RSum : REAL_ZERO;
+}
+
+// 0129
+Real DistanceAABBAABB(const AABB *A, const AABB *B) {
+	Real DistSq = REAL_ZERO;
+	for (int I = 0; I < 3; I++) {
+		Real AMin = A->Min.Data[I];
+		Real AMax = A->Max.Data[I];
+		Real BMin = B->Min.Data[I];
+		Real BMax = B->Max.Data[I];
+		if (AMax < BMin) {
+			Real D = BMin - AMax;
+			DistSq += D * D;
+		} else if (BMax < AMin) {
+			Real D = AMin - BMax;
+			DistSq += D * D;
+		}
+	}
+	return SulettaSqrt(DistSq);
+}
+
+// 0130
+Real DistanceOBBOBB(const OBB *A, const OBB *B) {
+	// Use SAT axes to find minimum separation distance.
+	// SAT軸を使って最小分離距離を求めるの。
+	Vector3 AAxes[3], BAxes[3];
+	Vector3 UX = KannaVector3Make(1,0,0);
+	Vector3 UY = KannaVector3Make(0,1,0);
+	Vector3 UZ = KannaVector3Make(0,0,1);
+	AAxes[0] = EuphylliaQuaternionRotateVector(&A->Rotation, &UX);
+	AAxes[1] = EuphylliaQuaternionRotateVector(&A->Rotation, &UY);
+	AAxes[2] = EuphylliaQuaternionRotateVector(&A->Rotation, &UZ);
+	BAxes[0] = EuphylliaQuaternionRotateVector(&B->Rotation, &UX);
+	BAxes[1] = EuphylliaQuaternionRotateVector(&B->Rotation, &UY);
+	BAxes[2] = EuphylliaQuaternionRotateVector(&B->Rotation, &UZ);
+
+	Vector3 Axes[15];
+	int AxisCount = 0;
+	int I, J;
+	for (I = 0; I < 3; I++) Axes[AxisCount++] = AAxes[I];
+	for (I = 0; I < 3; I++) Axes[AxisCount++] = BAxes[I];
+	for (I = 0; I < 3; I++) {
+		for (J = 0; J < 3; J++) {
+			Vector3 Cr = KannaVector3Cross(&AAxes[I], &BAxes[J]);
+			Real LenSq = KannaVector3LengthSq(&Cr);
+			if (!NagisaIsZero(LenSq)) {
+				Axes[AxisCount++] = Cr;
+			}
+		}
+	}
+
+	Real MaxPen = -1e30;
+	for (I = 0; I < AxisCount; I++) {
+		Real AMin, AMax, BMin, BMax;
+		ProjectOBB(A, &Axes[I], &AMin, &AMax);
+		ProjectOBB(B, &Axes[I], &BMin, &BMax);
+
+		// Separation on this axis
+		Real Sep = BMin - AMax;
+		if (Sep > REAL_ZERO) return Sep; // separated → positive distance
+
+		// Penetration: track deepest
+		Real Pen = AMax - BMin; // >0 means overlapping
+		if (Pen > MaxPen) MaxPen = Pen;
+
+		// Check opposite direction
+		Sep = AMin - BMax;
+		if (Sep > REAL_ZERO) return Sep;
+		Pen = BMax - AMin;
+		if (Pen > MaxPen) MaxPen = Pen;
+	}
+
+	// Overlapping — return negative penetration depth
+	return -MaxPen;
+}

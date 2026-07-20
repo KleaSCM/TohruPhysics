@@ -164,3 +164,28 @@ int IntersectSegmentAABB(const Segment *Seg, const AABB *Box, Real *T0, Real *T1
 int IntersectSegmentOBB(const Segment *Seg, const OBB *O, Real *T0, Real *T1);
 // 0120
 int IntersectSegmentPlane(const Segment *Seg, const Plane *P, Real *TOut);
+
+// ===========================================================================
+//  ClosestPoint / Distance queries (Section 1.14)
+// ===========================================================================
+
+// 0121
+Vector3 ClosestPointPointSphere(const Sphere *S, const Vector3 *P);
+// 0122
+Vector3 ClosestPointPointAABB(const AABB *Box, const Vector3 *P);
+// 0123
+Vector3 ClosestPointPointOBB(const OBB *Box, const Vector3 *P);
+// 0124
+Vector3 ClosestPointPointCapsule(const Capsule *C, const Vector3 *P);
+// 0125
+Vector3 ClosestPointPointPlane(const Plane *P, const Vector3 *Pt);
+// 0126
+Vector3 ClosestPointPointTriangle(const Triangle *T, const Vector3 *P);
+// 0127
+Real    ClosestPointSegmentSegment(const Segment *S1, const Segment *S2, Vector3 *P1, Vector3 *P2);
+// 0128
+Real    DistanceSphereSphere(const Sphere *A, const Sphere *B);
+// 0129
+Real    DistanceAABBAABB(const AABB *A, const AABB *B);
+// 0130
+Real    DistanceOBBOBB(const OBB *A, const OBB *B);

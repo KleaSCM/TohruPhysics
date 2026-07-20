@@ -610,16 +610,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0120. Implement `IntersectSegmentPlane` detection using signed distance evaluation at endpoints.
 
 #### 1.14 Collision Detection - Distance & Closest Point Queries
-- [ ] 0121. Implement `ClosestPointPointSphere` returning sphere center for inside points, surface point otherwise.
-- [ ] 0122. Implement `ClosestPointPointAABB` clamping point coordinates to AABB min/max ranges.
-- [ ] 0123. Implement `ClosestPointPointOBB` transforming point into OBB local space, clamping, then transforming back.
-- [ ] 0124. Implement `ClosestPointPointCapsule` projecting point onto capsule segment with radius offset.
-- [ ] 0125. Implement `ClosestPointPointPlane` projecting point onto plane along plane normal direction.
-- [ ] 0126. Implement `ClosestPointPointTriangle` using barycentric coordinate projection with edge rejection logic.
-- [ ] 0127. Implement `ClosestPointSegmentSegment` using vector projections with robust parallel case handling.
-- [ ] 0128. Implement `DistanceSphereSphere` using center distance minus combined radii with positive-only clamping.
-- [ ] 0129. Implement `DistanceAABBAABB` using squared distance between boxes with gauss clipping algorithm.
-- [ ] 0130. Implement `DistanceOBBOBB` utilizing SAT with distance axes and penetration depth calculation.
+- [x] 0121. Implement `ClosestPointPointSphere` returning sphere center for inside points, surface point otherwise.
+- [x] 0122. Implement `ClosestPointPointAABB` clamping point coordinates to AABB min/max ranges.
+- [x] 0123. Implement `ClosestPointPointOBB` transforming point into OBB local space, clamping, then transforming back.
+- [x] 0124. Implement `ClosestPointPointCapsule` projecting point onto capsule segment with radius offset.
+- [x] 0125. Implement `ClosestPointPointPlane` projecting point onto plane along plane normal direction.
+- [x] 0126. Implement `ClosestPointPointTriangle` using barycentric coordinate projection with edge rejection logic.
+- [x] 0127. Implement `ClosestPointSegmentSegment` using vector projections with robust parallel case handling.
+- [x] 0128. Implement `DistanceSphereSphere` using center distance minus combined radii with positive-only clamping.
+- [x] 0129. Implement `DistanceAABBAABB` using squared distance between boxes with gauss clipping algorithm.
+- [x] 0130. Implement `DistanceOBBOBB` utilizing SAT with distance axes and penetration depth calculation.
 
 #### 1.15 Collision Detection - Support Function Primitives
 - [ ] 0131. Implement `SupportSphere` returning sphere center plus radius along direction vector.
