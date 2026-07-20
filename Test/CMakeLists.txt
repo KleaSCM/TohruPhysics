@@ -19,3 +19,8 @@ add_executable(TestMatrix
 	Source/TestMatrix.cpp
 )
 target_link_libraries(TestMatrix PRIVATE TohruPhysics)
+
+add_executable(TestQuaternion
+	Source/TestQuaternion.cpp
+)
+target_link_libraries(TestQuaternion PRIVATE TohruPhysics)

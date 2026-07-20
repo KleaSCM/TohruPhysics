@@ -137,7 +137,7 @@ static int EnsureSpace(Arena *A, size_t Needed) {
 }
 
 void *KobayashiAlloc(Arena *A, size_t Size) {
-	if (Size == 0) {
+	if (A == NULL || Size == 0) {
 		return (void *)TohruZeroBlock;
 	}
 
@@ -151,7 +151,7 @@ void *KobayashiAlloc(Arena *A, size_t Size) {
 }
 
 void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align) {
-	if (Size == 0) {
+	if (A == NULL || Size == 0) {
 		return (void *)TohruZeroBlock;
 	}
 
@@ -177,11 +177,14 @@ void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align) {
 }
 
 void *KobayashiDup(Arena *A, const void *Src, size_t Size) {
-	if (Size == 0) {
+	if (A == NULL || Size == 0) {
 		return (void *)TohruZeroBlock;
 	}
 
 	void *Dst = KobayashiAlloc(A, Size);
+	if (Dst == TohruZeroBlock) {
+		return Dst;
+	}
 	memcpy(Dst, Src, Size);
 	return Dst;
 }

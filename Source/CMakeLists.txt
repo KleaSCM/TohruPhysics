@@ -26,3 +26,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	Matrix/Matrix.cpp
 )
+
+# Quaternion subsystem
+target_sources(TohruPhysics PRIVATE
+	Quaternion/Quaternion.cpp
+)
