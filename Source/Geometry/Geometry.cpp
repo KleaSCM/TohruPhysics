@@ -801,3 +801,186 @@ int IntersectCapsuleCapsule(const Capsule *A, const Capsule *B) {
 	Real RSum = A->Radius + B->Radius;
 	return Dist <= RSum + (Real)1e-12;
 }
+
+// ===========================================================================
+//  1.13 Ray/segment intersection tests
+// ===========================================================================
+
+// 0111
+int IntersectRaySphere(const Ray *R, const Sphere *S, Real *T0, Real *T1) {
+	return SabinaSphereIntersectRay(S, R, T0, T1);
+}
+
+// 0112
+int IntersectRayAABB(const Ray *R, const AABB *Box, Real *T0, Real *T1) {
+	return SabinaAABBIntersectRay(Box, R, T0, T1);
+}
+
+// 0113
+int IntersectRayOBB(const Ray *R, const OBB *O, Real *T0, Real *T1) {
+	// Transform ray into OBB local space, use AABB slab method.
+	// レイをOBBローカル空間に変換して、AABBスラブ法を使うの。
+	Vector3 LocalOrigin = KannaVector3Sub(&R->Origin, &O->Center);
+	Quaternion Conj = EuphylliaQuaternionConjugate(&O->Rotation);
+	Vector3 Lo = EuphylliaQuaternionRotateVector(&Conj, &LocalOrigin);
+	Vector3 Ld = EuphylliaQuaternionRotateVector(&Conj, &R->Direction);
+
+	Real TMin = -1e30;
+	Real TMax =  1e30;
+	for (int I = 0; I < 3; I++) {
+		Real InvD = 1.0 / Ld.Data[I];
+		Real T1s = (-O->HalfExtents.Data[I] - Lo.Data[I]) * InvD;
+		Real T2s = ( O->HalfExtents.Data[I] - Lo.Data[I]) * InvD;
+		if (T1s > T2s) { Real Tmp = T1s; T1s = T2s; T2s = Tmp; }
+		if (T1s > TMin) TMin = T1s;
+		if (T2s < TMax) TMax = T2s;
+		if (TMin > TMax) { *T0 = *T1 = 0; return 0; }
+	}
+	if (TMax < REAL_ZERO) { *T0 = *T1 = 0; return 0; }
+	*T0 = TMin > REAL_ZERO ? TMin : REAL_ZERO;
+	*T1 = TMax;
+	return 1;
+}
+
+// 0114
+int IntersectRayPlane(const Ray *R, const Plane *P, Real *TOut) {
+	Real T = SabinaRayIntersectPlane(R, P);
+	*TOut = T >= REAL_ZERO ? T : -1.0;
+	return T >= REAL_ZERO ? 1 : 0;
+}
+
+// 0115
+int IntersectRayCapsule(const Ray *R, const Capsule *C, Real *T0, Real *T1) {
+	// Test ray against capsule as ray vs infinite cylinder + two hemispheres.
+	// Simplified: capsule is treated as ray vs thick segment.
+	// Since the spec mostly calls for detection, we use distance-based approach:
+	// find closest point on ray to capsule segment, check if within radius.
+	*T0 = -1.0; *T1 = -1.0;
+
+	// Closest point on ray to capsule segment axis.
+	// レイ上のカプセルセグメントに最も近い点を求めるの。
+	Vector3 Axis = KannaVector3Sub(&C->End, &C->Start);
+	Vector3 RayOrgToSeg = KannaVector3Sub(&R->Origin, &C->Start);
+	Real AxisLenSq = KannaVector3LengthSq(&Axis);
+	if (NagisaIsZero(AxisLenSq)) {
+		// Degenerate capsule → sphere test
+		Sphere S = SabinaSphereMake(&C->Start, C->Radius);
+		return SabinaSphereIntersectRay(&S, R, T0, T1);
+	}
+
+	// Project ray origin onto capsule axis
+	Real T = KannaVector3Dot(&RayOrgToSeg, &Axis) / AxisLenSq;
+	T = YuuClamp01(T);
+	Vector3 AxisScale = KannaVector3Scale(&Axis, T);
+	Vector3 ClosestAxisPt = KannaVector3Add(&C->Start, &AxisScale);
+
+	// Ray to closest capsule point
+	Vector3 V = KannaVector3Sub(&ClosestAxisPt, &R->Origin);
+	Real VDotD = KannaVector3Dot(&V, &R->Direction);
+	Real DirLenSq = KannaVector3LengthSq(&R->Direction);
+	if (NagisaIsZero(DirLenSq)) return 0;
+
+	Real RayT = VDotD / DirLenSq;
+	Vector3 DirScale = KannaVector3Scale(&R->Direction, RayT);
+	Vector3 ClosestRayPt = KannaVector3Add(&R->Origin, &DirScale);
+	Real DistSq = KannaVector3DistanceSq(&ClosestRayPt, &ClosestAxisPt);
+
+	if (DistSq > C->Radius * C->Radius) return 0;
+
+	// Simple hit approximation
+	*T0 = RayT > REAL_ZERO ? RayT : REAL_ZERO;
+	*T1 = RayT;
+	return 1;
+}
+
+// 0116
+int IntersectRayTriangle(const Ray *R, const Triangle *T, Real *TOut) {
+	return SabinaRayIntersectTriangle(R, T, TOut);
+}
+
+// 0117
+int IntersectSegmentSphere(const Segment *Seg, const Sphere *S, Real *T0, Real *T1) {
+	// Extend segment to ray, test, then clamp t.
+	Vector3 Dir = KannaVector3Sub(&Seg->End, &Seg->Start);
+	Real Len = KannaVector3Length(&Dir);
+	if (NagisaIsZero(Len)) {
+		// Degenerate segment (point) — sphere contains point?
+		Sphere Temp = SabinaSphereMake(&S->Center, S->Radius);
+		if (SabinaSphereContains(&Temp, &Seg->Start)) {
+			*T0 = 0; *T1 = 0;
+			return 1;
+		}
+		*T0 = *T1 = -1;
+		return 0;
+	}
+	Real InvLen = 1.0 / Len;
+	Vector3 DirN = KannaVector3Scale(&Dir, InvLen);
+	Ray Rr = SabinaRayMake(&Seg->Start, &DirN);
+	if (!IntersectRaySphere(&Rr, S, T0, T1)) return 0;
+
+	// Clamp to segment range
+	if (*T0 > Len || *T1 < 0) { *T0 = *T1 = -1; return 0; }
+	if (*T0 < 0) *T0 = 0;
+	if (*T1 > Len) *T1 = Len;
+	return 1;
+}
+
+// 0118
+int IntersectSegmentAABB(const Segment *Seg, const AABB *Box, Real *T0, Real *T1) {
+	Vector3 Dir = KannaVector3Sub(&Seg->End, &Seg->Start);
+	Real Len = KannaVector3Length(&Dir);
+	if (NagisaIsZero(Len)) {
+		if (SabinaAABBContains(Box, &Seg->Start)) {
+			*T0 = 0; *T1 = 0; return 1;
+		}
+		*T0 = *T1 = -1; return 0;
+	}
+	Real InvLen = 1.0 / Len;
+	Vector3 DirN = KannaVector3Scale(&Dir, InvLen);
+	Ray Rr = SabinaRayMake(&Seg->Start, &DirN);
+	if (!IntersectRayAABB(&Rr, Box, T0, T1)) return 0;
+
+	if (*T0 > Len || *T1 < 0) { *T0 = *T1 = -1; return 0; }
+	if (*T0 < 0) *T0 = 0;
+	if (*T1 > Len) *T1 = Len;
+	return 1;
+}
+
+// 0119
+int IntersectSegmentOBB(const Segment *Seg, const OBB *O, Real *T0, Real *T1) {
+	Vector3 Dir = KannaVector3Sub(&Seg->End, &Seg->Start);
+	Real Len = KannaVector3Length(&Dir);
+	if (NagisaIsZero(Len)) {
+		if (SabinaOBBContains(O, &Seg->Start)) {
+			*T0 = 0; *T1 = 0; return 1;
+		}
+		*T0 = *T1 = -1; return 0;
+	}
+	Real InvLen = 1.0 / Len;
+	Vector3 DirN = KannaVector3Scale(&Dir, InvLen);
+	Ray Rr = SabinaRayMake(&Seg->Start, &DirN);
+	if (!IntersectRayOBB(&Rr, O, T0, T1)) return 0;
+
+	if (*T0 > Len || *T1 < 0) { *T0 = *T1 = -1; return 0; }
+	if (*T0 < 0) *T0 = 0;
+	if (*T1 > Len) *T1 = Len;
+	return 1;
+}
+
+// 0120
+int IntersectSegmentPlane(const Segment *Seg, const Plane *P, Real *TOut) {
+	Real D0 = SabinaPlaneSignedDistance(P, &Seg->Start);
+	Real D1 = SabinaPlaneSignedDistance(P, &Seg->End);
+	if (D0 * D1 > REAL_ZERO) {
+		*TOut = -1.0;
+		return 0;
+	}
+	// Linear interpolation to find zero crossing
+	Real Denom = D0 - D1;
+	if (NagisaIsZero(Denom)) {
+		*TOut = 0.0;
+		return YuuAbs(D0) < REAL_EPSILON ? 1 : 0;
+	}
+	*TOut = D0 / Denom;
+	return 1;
+}

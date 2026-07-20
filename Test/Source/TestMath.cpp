@@ -181,10 +181,10 @@ static void TestYuuWrap64(void) {
 // ===========================================================================
 
 static void TestSulettaSin(void) {
-	TEST(NagisaApproxZero(SulettaSin(0.0), 1e-6), "sin(0) ~ 0");
-	TEST(NagisaApproxEqual(SulettaSin(REAL_PI_HALF), 1.0, 1e-4), "sin(PI/2) ~ 1");
-	TEST(NagisaApproxZero(SulettaSin(REAL_PI), 1e-4), "sin(PI) ~ 0");
-	TEST(NagisaApproxEqual(SulettaSin(3.0 * REAL_PI_HALF), -1.0, 1e-4), "sin(3PI/2) ~ -1");
+	TEST(NagisaApproxZero(SulettaSin(0.0), 1e-8), "sin(0) ~ 0");
+	TEST(NagisaApproxEqual(SulettaSin(REAL_PI_HALF), 1.0, 1e-6), "sin(PI/2) ~ 1");
+	TEST(NagisaApproxZero(SulettaSin(REAL_PI), 1e-6), "sin(PI) ~ 0");
+	TEST(NagisaApproxEqual(SulettaSin(3.0 * REAL_PI_HALF), -1.0, 1e-6), "sin(3PI/2) ~ -1");
 	TEST(SulettaSin(MakeNaN()) == 0.0, "sin(NaN) -> 0");
 	TEST(SulettaSin(MakePosInf()) == 0.0, "sin(Inf) -> 0");
 }
@@ -231,10 +231,10 @@ static void TestSulettaTan(void) {
 
 static void TestSulettaAtan2(void) {
 	TEST(NagisaApproxZero(SulettaAtan2(0.0, 1.0), 1e-6), "atan2(0,1) ~ 0");
-	TEST(NagisaApproxEqual(SulettaAtan2(1.0, 0.0), REAL_PI_HALF, 1e-2), "atan2(1,0) ~ PI/2");
-	TEST(NagisaApproxEqual(SulettaAtan2(0.0, -1.0), REAL_PI, 2e-2), "atan2(0,-1) ~ PI");
-	TEST(NagisaApproxEqual(SulettaAtan2(-1.0, 0.0), -REAL_PI_HALF, 1e-2), "atan2(-1,0) ~ -PI/2");
-	TEST(NagisaApproxEqual(SulettaAtan2(1.0, 1.0), REAL_PI / 4.0, 2e-2), "atan2(1,1) ~ PI/4");
+	TEST(NagisaApproxEqual(SulettaAtan2(1.0, 0.0), REAL_PI_HALF, 1e-6), "atan2(1,0) ~ PI/2");
+	TEST(NagisaApproxEqual(SulettaAtan2(0.0, -1.0), REAL_PI, 1e-6), "atan2(0,-1) ~ PI");
+	TEST(NagisaApproxEqual(SulettaAtan2(-1.0, 0.0), -REAL_PI_HALF, 1e-6), "atan2(-1,0) ~ -PI/2");
+	TEST(NagisaApproxEqual(SulettaAtan2(1.0, 1.0), REAL_PI / 4.0, 2e-4), "atan2(1,1) ~ PI/4");
 	TEST(SulettaAtan2(MakeNaN(), 1.0) == 0.0, "atan2(NaN,1) -> 0");
 	TEST(SulettaAtan2(1.0, MakeNaN()) == 0.0, "atan2(1,NaN) -> 0");
 }

@@ -126,24 +126,41 @@ int      SabinaTriangleIntersectRay(const Triangle *T, const Ray *R, Real *TOut)
 //  Intersect — cross-type intersection tests (Section 1.12)
 //  クロスタイプ交差テストね。
 // ===========================================================================
+//  Intersect — cross-type intersection tests (Section 1.12)
+// ===========================================================================
 
-// 0101
 int IntersectSphereSphere(const Sphere *A, const Sphere *B);
-// 0102
 int IntersectSphereAABB(const Sphere *S, const AABB *Box);
-// 0103
 int IntersectSpherePlane(const Sphere *S, const Plane *P);
-// 0104
 int IntersectSphereCapsule(const Sphere *S, const Capsule *C);
-// 0105
 int IntersectAABBAABB(const AABB *A, const AABB *B);
-// 0106
 int IntersectAABBPlane(const AABB *Box, const Plane *P);
-// 0107
 int IntersectAABBOBB(const AABB *Box, const OBB *O);
-// 0108
 int IntersectOBBOBB(const OBB *A, const OBB *B);
-// 0109
 int IntersectOBBPlane(const OBB *O, const Plane *P);
-// 0110
 int IntersectCapsuleCapsule(const Capsule *A, const Capsule *B);
+
+// ===========================================================================
+//  IntersectRay*/IntersectSegment* — advanced ray/segment intersection (1.13)
+// ===========================================================================
+
+// 0111
+int IntersectRaySphere(const Ray *R, const Sphere *S, Real *T0, Real *T1);
+// 0112
+int IntersectRayAABB(const Ray *R, const AABB *Box, Real *T0, Real *T1);
+// 0113
+int IntersectRayOBB(const Ray *R, const OBB *O, Real *T0, Real *T1);
+// 0114
+int IntersectRayPlane(const Ray *R, const Plane *P, Real *TOut);
+// 0115
+int IntersectRayCapsule(const Ray *R, const Capsule *C, Real *T0, Real *T1);
+// 0116
+int IntersectRayTriangle(const Ray *R, const Triangle *T, Real *TOut);
+// 0117
+int IntersectSegmentSphere(const Segment *Seg, const Sphere *S, Real *T0, Real *T1);
+// 0118
+int IntersectSegmentAABB(const Segment *Seg, const AABB *Box, Real *T0, Real *T1);
+// 0119
+int IntersectSegmentOBB(const Segment *Seg, const OBB *O, Real *T0, Real *T1);
+// 0120
+int IntersectSegmentPlane(const Segment *Seg, const Plane *P, Real *TOut);

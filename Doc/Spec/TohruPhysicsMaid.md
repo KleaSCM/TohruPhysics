@@ -552,14 +552,14 @@ Defensive Programming --> Performance --> Safety
 - [x] 0072. Implement custom logging message generation pipelines designed to bypass standard library I/O locks.
 
 #### 1.9 Primitive Structural Geometric Configurations
-- [ ] 0073. Implement an `AABB` axis-aligned bounding box primitive layout using structural coordinate states.
-- [ ] 0074. Implement a `Sphere` bounding volume tracking layout mapping origin points and radius scalars.
-- [ ] 0075. Implement an `OBB` oriented bounding box structural configuration maintaining full rotational orientations.
-- [ ] 0076. Implement a `Capsule` geometric layout mapping core lines, endpoints, and spherical caps.
-- [ ] 0077. Implement a `Plane` structural model defining explicit surface normals and tracking offsets.
-- [ ] 0078. Implement a `Ray` geometric setup tracking infinite direction vectors from precise origins.
-- [ ] 0079. Implement a `Segment` configuration mapping exact localized linear points.
-- [ ] 0080. Implement a `Triangle` layout mapping absolute vertex locations for structural mesh configurations.
+- [x] 0073. Implement an `AABB` axis-aligned bounding box primitive layout using structural coordinate states.
+- [x] 0074. Implement a `Sphere` bounding volume tracking layout mapping origin points and radius scalars.
+- [x] 0075. Implement an `OBB` oriented bounding box structural configuration maintaining full rotational orientations.
+- [x] 0076. Implement a `Capsule` geometric layout mapping core lines, endpoints, and spherical caps.
+- [x] 0077. Implement a `Plane` structural model defining explicit surface normals and tracking offsets.
+- [x] 0078. Implement a `Ray` geometric setup tracking infinite direction vectors from precise origins.
+- [x] 0079. Implement a `Segment` configuration mapping exact localized linear points.
+- [x] 0080. Implement a `Triangle` layout mapping absolute vertex locations for structural mesh configurations.
 
 #### 1.10 Base Module Setup & Compilation Controls
 - [x] 0081. Establish standard `.editorconfig` baseline matching tabs-only and maximum line parameters.
@@ -586,28 +586,28 @@ Defensive Programming --> Performance --> Safety
 - [x] 0100. Write linear damping equations to control unchecked velocity increases over prolonged execution.
 
 #### 1.12 Collision Detection Primitives - Core Intersection Tests
-- [ ] 0101. Implement `IntersectSphereSphere` detection using squared distance comparisons against combined radii.
-- [ ] 0102. Implement `IntersectSphereAABB` detection using closest point on AABB to sphere center.
-- [ ] 0103. Implement `IntersectSpherePlane` detection using signed distance from sphere center to plane.
-- [ ] 0104. Implement `IntersectSphereCapsule` detection using closest point on capsule segment to sphere center.
-- [ ] 0105. Implement `IntersectAABBAABB` detection using coordinate-wise overlap interval checks.
-- [ ] 0106. Implement `IntersectAABBPlane` detection using plane distance against AABB extents.
-- [ ] 0107. Implement `IntersectAABBOBB` detection utilizing Separating Axis Theorem with 15 axes.
-- [ ] 0108. Implement `IntersectOBBOBB` detection utilizing full SAT with 15 potential separating axes.
-- [ ] 0109. Implement `IntersectOBBPlane` detection using projection of OBB vertices onto plane normal.
-- [ ] 0110. Implement `IntersectCapsuleCapsule` detection using segment-segment distance with radius sum checks.
+- [x] 0101. Implement `IntersectSphereSphere` detection using squared distance comparisons against combined radii.
+- [x] 0102. Implement `IntersectSphereAABB` detection using closest point on AABB to sphere center.
+- [x] 0103. Implement `IntersectSpherePlane` detection using signed distance from sphere center to plane.
+- [x] 0104. Implement `IntersectSphereCapsule` detection using closest point on capsule segment to sphere center.
+- [x] 0105. Implement `IntersectAABBAABB` detection using coordinate-wise overlap interval checks.
+- [x] 0106. Implement `IntersectAABBPlane` detection using plane distance against AABB extents.
+- [x] 0107. Implement `IntersectAABBOBB` detection utilizing Separating Axis Theorem with 15 axes.
+- [x] 0108. Implement `IntersectOBBOBB` detection utilizing full SAT with 15 potential separating axes.
+- [x] 0109. Implement `IntersectOBBPlane` detection using projection of OBB vertices onto plane normal.
+- [x] 0110. Implement `IntersectCapsuleCapsule` detection using segment-segment distance with radius sum checks.
 
 #### 1.13 Collision Detection - Advanced Shape Intersections
-- [ ] 0111. Implement `IntersectRaySphere` detection calculating discriminant for ray-sphere intersection.
-- [ ] 0112. Implement `IntersectRayAABB` detection using slab method with robust t-min/t-max tracking.
-- [ ] 0113. Implement `IntersectRayOBB` detection transforming ray into OBB local space then using slab method.
-- [ ] 0114. Implement `IntersectRayPlane` detection using denominator check to prevent division by zero.
-- [ ] 0115. Implement `IntersectRayCapsule` detection using segment-sphere intersection along capsule axis.
-- [ ] 0116. Implement `IntersectRayTriangle` detection using Möller-Trumbore algorithm with backface culling toggle.
-- [ ] 0117. Implement `IntersectSegmentSphere` detection using closest point on segment to sphere center.
-- [ ] 0118. Implement `IntersectSegmentAABB` detection using segment clipping against AABB planes.
-- [ ] 0119. Implement `IntersectSegmentOBB` detection transforming segment into OBB local space then clipping.
-- [ ] 0120. Implement `IntersectSegmentPlane` detection using signed distance evaluation at endpoints.
+- [x] 0111. Implement `IntersectRaySphere` detection calculating discriminant for ray-sphere intersection.
+- [x] 0112. Implement `IntersectRayAABB` detection using slab method with robust t-min/t-max tracking.
+- [x] 0113. Implement `IntersectRayOBB` detection transforming ray into OBB local space then using slab method.
+- [x] 0114. Implement `IntersectRayPlane` detection using denominator check to prevent division by zero.
+- [x] 0115. Implement `IntersectRayCapsule` detection using segment-sphere intersection along capsule axis.
+- [x] 0116. Implement `IntersectRayTriangle` detection using Möller-Trumbore algorithm with backface culling toggle.
+- [x] 0117. Implement `IntersectSegmentSphere` detection using closest point on segment to sphere center.
+- [x] 0118. Implement `IntersectSegmentAABB` detection using segment clipping against AABB planes.
+- [x] 0119. Implement `IntersectSegmentOBB` detection transforming segment into OBB local space then clipping.
+- [x] 0120. Implement `IntersectSegmentPlane` detection using signed distance evaluation at endpoints.
 
 #### 1.14 Collision Detection - Distance & Closest Point Queries
 - [ ] 0121. Implement `ClosestPointPointSphere` returning sphere center for inside points, surface point otherwise.

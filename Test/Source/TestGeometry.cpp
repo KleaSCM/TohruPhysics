@@ -394,6 +394,246 @@ static void TestRayIntersectPlaneTriangle(void) {
 	TEST(Hit, "ray triangle hit");
 }
 
+// ===========================================================================
+//  1.12 Intersection tests
+// ===========================================================================
+
+static void TestIntersectSphereSphere(void) {
+	Vector3 Z = KannaVector3Make(0,0,0);
+	Vector3 P4 = KannaVector3Make(4,0,0);
+	Vector3 P10 = KannaVector3Make(10,0,0);
+	Sphere A = SabinaSphereMake(&Z, 3.0);
+	Sphere B = SabinaSphereMake(&P4, 2.0);
+	Sphere C = SabinaSphereMake(&P10, 1.0);
+	TEST(IntersectSphereSphere(&A, &B), "sphere-sphere overlap");
+	TEST(!IntersectSphereSphere(&A, &C), "sphere-sphere separated");
+}
+
+static void TestIntersectSphereAABB(void) {
+	Vector3 Z = KannaVector3Make(0,0,0);
+	Vector3 F5 = KannaVector3Make(5,5,5);
+	Vector3 S3 = KannaVector3Make(3,3,3);
+	Vector3 S10 = KannaVector3Make(10,10,10);
+	AABB Box = SabinaAABBMake(&Z, &F5);
+	Sphere S = SabinaSphereMake(&S3, 2.0);
+	Sphere S2 = SabinaSphereMake(&S10, 1.0);
+	TEST(IntersectSphereAABB(&S, &Box), "sphere-aabb inside");
+	TEST(!IntersectSphereAABB(&S2, &Box), "sphere-aabb outside");
+}
+
+static void TestIntersectSpherePlane(void) {
+	Vector3 Y1 = KannaVector3Make(0,1,0);
+	Vector3 S2 = KannaVector3Make(0,2,0);
+	Vector3 S10 = KannaVector3Make(0,10,0);
+	Sphere S = SabinaSphereMake(&S2, 2.0);
+	Sphere S2s = SabinaSphereMake(&S10, 1.0);
+	Plane P = SabinaPlaneMake(&Y1, 0.0);
+	TEST(IntersectSpherePlane(&S, &P), "sphere-plane touching");
+	TEST(!IntersectSpherePlane(&S2s, &P), "sphere-plane far");
+}
+
+static void TestIntersectSphereCapsule(void) {
+	Vector3 S5 = KannaVector3Make(5,0,0);
+	Vector3 S20 = KannaVector3Make(20,0,0);
+	Vector3 Z = KannaVector3Make(0,0,0);
+	Vector3 Y10 = KannaVector3Make(0,10,0);
+	Sphere S = SabinaSphereMake(&S5, 2.0);
+	Sphere S2 = SabinaSphereMake(&S20, 1.0);
+	Capsule C = SabinaCapsuleMake(&Z, &Y10, 2.0);
+	TEST(IntersectSphereCapsule(&S, &C), "sphere-capsule overlap");
+	TEST(!IntersectSphereCapsule(&S2, &C), "sphere-capsule far");
+}
+
+static void TestIntersectAABBPlane(void) {
+	Vector3 Z = KannaVector3Make(0,0,0);
+	Vector3 T2 = KannaVector3Make(2,2,2);
+	Vector3 Y1 = KannaVector3Make(0,1,0);
+	AABB Box = SabinaAABBMake(&Z, &T2);
+	Plane P = SabinaPlaneMake(&Y1, 1.0);
+	Plane P2 = SabinaPlaneMake(&Y1, 10.0);
+	TEST(IntersectAABBPlane(&Box, &P), "aabb-plane cutting");
+	TEST(!IntersectAABBPlane(&Box, &P2), "aabb-plane far");
+}
+
+static void TestIntersectAABBOBB(void) {
+	Vector3 N2 = KannaVector3Make(-2,-2,-2);
+	Vector3 P2 = KannaVector3Make(2,2,2);
+	Vector3 O1 = KannaVector3Make(0,0,0);
+	Vector3 O10 = KannaVector3Make(10,0,0);
+	Vector3 H1 = KannaVector3Make(1,1,1);
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	AABB Box = SabinaAABBMake(&N2, &P2);
+	OBB O = SabinaOBBMake(&O1, &H1, &Id);
+	OBB O2 = SabinaOBBMake(&O10, &H1, &Id);
+	TEST(IntersectAABBOBB(&Box, &O), "aabb-obb overlap");
+	TEST(!IntersectAABBOBB(&Box, &O2), "aabb-obb far");
+}
+
+static void TestIntersectOBBOBB(void) {
+	Vector3 Z = KannaVector3Make(0,0,0);
+	Vector3 O1 = KannaVector3Make(1,1,1);
+	Vector3 O10 = KannaVector3Make(10,0,0);
+	Vector3 H2 = KannaVector3Make(2,2,2);
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	OBB A = SabinaOBBMake(&Z, &H2, &Id);
+	OBB B = SabinaOBBMake(&O1, &H2, &Id);
+	OBB C = SabinaOBBMake(&O10, &H2, &Id);
+	TEST(IntersectOBBOBB(&A, &B), "obb-obb overlap");
+	TEST(!IntersectOBBOBB(&A, &C), "obb-obb far");
+}
+
+static void TestIntersectOBBPlane(void) {
+	Vector3 Z = KannaVector3Make(0,0,0);
+	Vector3 H2 = KannaVector3Make(2,2,2);
+	Vector3 Y1 = KannaVector3Make(0,1,0);
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	OBB O = SabinaOBBMake(&Z, &H2, &Id);
+	Plane P = SabinaPlaneMake(&Y1, 1.0);
+	Plane P2 = SabinaPlaneMake(&Y1, 10.0);
+	TEST(IntersectOBBPlane(&O, &P), "obb-plane cutting");
+	TEST(!IntersectOBBPlane(&O, &P2), "obb-plane far");
+}
+
+static void TestIntersectCapsuleCapsule(void) {
+	Vector3 Z = KannaVector3Make(0,0,0);
+	Vector3 Y10 = KannaVector3Make(0,10,0);
+	Vector3 C2 = KannaVector3Make(0,5,2);
+	Vector3 C4 = KannaVector3Make(0,5,4);
+	Vector3 CZ10 = KannaVector3Make(0,0,10);
+	Vector3 CY10 = KannaVector3Make(0,10,10);
+	Capsule A = SabinaCapsuleMake(&Z, &Y10, 1.0);
+	Capsule B = SabinaCapsuleMake(&C2, &C4, 1.0);
+	Capsule D = SabinaCapsuleMake(&CZ10, &CY10, 1.0);
+	TEST(IntersectCapsuleCapsule(&A, &B), "capsule-capsule overlap");
+	TEST(!IntersectCapsuleCapsule(&A, &D), "capsule-capsule far");
+}
+
+// ===========================================================================
+//  1.13 Ray/segment intersection tests
+// ===========================================================================
+
+static void TestIntersectRaySphere(void) {
+	Vector3 O = KannaVector3Make(-10,0,0);
+	Vector3 D = KannaVector3Make(1,0,0);
+	Vector3 SC = KannaVector3Zero();
+	Ray R = SabinaRayMake(&O, &D);
+	Sphere S = SabinaSphereMake(&SC, 5.0);
+	Real T0, T1;
+	int Hit = IntersectRaySphere(&R, &S, &T0, &T1);
+	TEST(Hit, "ray-sphere hit");
+	TEST(T0 >= 0, "ray-sphere t0>=0");
+}
+
+static void TestIntersectRayAABB(void) {
+	Vector3 O = KannaVector3Make(-5,2,2);
+	Vector3 D = KannaVector3Make(1,0,0);
+	Vector3 Min = KannaVector3Make(0,0,0);
+	Vector3 Max = KannaVector3Make(10,10,10);
+	Ray R = SabinaRayMake(&O, &D);
+	AABB Box = SabinaAABBMake(&Min, &Max);
+	Real T0, T1;
+	int Hit = IntersectRayAABB(&R, &Box, &T0, &T1);
+	TEST(Hit, "ray-aabb hit");
+}
+
+static void TestIntersectRayOBB(void) {
+	Vector3 O = KannaVector3Make(-5,0,0);
+	Vector3 D = KannaVector3Make(1,0,0);
+	Vector3 C = KannaVector3Zero();
+	Vector3 HE = KannaVector3Make(2,2,2);
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	Ray R = SabinaRayMake(&O, &D);
+	OBB Box = SabinaOBBMake(&C, &HE, &Id);
+	Real T0, T1;
+	int Hit = IntersectRayOBB(&R, &Box, &T0, &T1);
+	TEST(Hit, "ray-obb hit");
+}
+
+static void TestIntersectRayPlane(void) {
+	Vector3 O = KannaVector3Make(0,-5,0);
+	Vector3 D = KannaVector3Make(0,1,0);
+	Vector3 N = KannaVector3Make(0,1,0);
+	Ray R = SabinaRayMake(&O, &D);
+	Plane P = SabinaPlaneMake(&N, 0.0);
+	Real TOut;
+	int Hit = IntersectRayPlane(&R, &P, &TOut);
+	TEST(Hit, "ray-plane hit");
+	TEST(TOut >= 0, "ray-plane t>=0");
+}
+
+static void TestIntersectRayCapsule(void) {
+	Vector3 O = KannaVector3Make(-5,0,0);
+	Vector3 D = KannaVector3Make(1,0,0);
+	Vector3 CS = KannaVector3Make(-2,0,0);
+	Vector3 CE = KannaVector3Make(2,0,0);
+	Ray R = SabinaRayMake(&O, &D);
+	Capsule Cap = SabinaCapsuleMake(&CS, &CE, 1.0);
+	Real T0, T1;
+	int Hit = IntersectRayCapsule(&R, &Cap, &T0, &T1);
+	TEST(Hit, "ray-capsule hit");
+}
+
+static void TestIntersectRayTriangle(void) {
+	Vector3 O = KannaVector3Make(0.25,0.25,1);
+	Vector3 D = KannaVector3Make(0,0,-1);
+	Vector3 V0 = KannaVector3Zero();
+	Vector3 V1 = KannaVector3Make(1,0,0);
+	Vector3 V2 = KannaVector3Make(0,1,0);
+	Ray R = SabinaRayMake(&O, &D);
+	Triangle T = SabinaTriangleMake(&V0, &V1, &V2);
+	Real TOut;
+	int Hit = IntersectRayTriangle(&R, &T, &TOut);
+	TEST(Hit, "ray-triangle hit");
+}
+
+static void TestIntersectSegmentSphere(void) {
+	Vector3 S0 = KannaVector3Make(-10,0,0);
+	Vector3 S1 = KannaVector3Make(10,0,0);
+	Vector3 SC = KannaVector3Zero();
+	Segment Seg = SabinaSegmentMake(&S0, &S1);
+	Sphere Sph = SabinaSphereMake(&SC, 3.0);
+	Real T0, T1;
+	int Hit = IntersectSegmentSphere(&Seg, &Sph, &T0, &T1);
+	TEST(Hit, "seg-sphere hit");
+}
+
+static void TestIntersectSegmentAABB(void) {
+	Vector3 S0 = KannaVector3Make(-5,0,0);
+	Vector3 S1 = KannaVector3Make(15,0,0);
+	Vector3 Min = KannaVector3Make(0,-2,-2);
+	Vector3 Max = KannaVector3Make(10,2,2);
+	Segment Seg = SabinaSegmentMake(&S0, &S1);
+	AABB Box = SabinaAABBMake(&Min, &Max);
+	Real T0, T1;
+	int Hit = IntersectSegmentAABB(&Seg, &Box, &T0, &T1);
+	TEST(Hit, "seg-aabb hit");
+}
+
+static void TestIntersectSegmentOBB(void) {
+	Vector3 S0 = KannaVector3Make(-5,0,0);
+	Vector3 S1 = KannaVector3Make(5,0,0);
+	Vector3 OC = KannaVector3Zero();
+	Vector3 HE = KannaVector3Make(2,2,2);
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	Segment Seg = SabinaSegmentMake(&S0, &S1);
+	OBB Box = SabinaOBBMake(&OC, &HE, &Id);
+	Real T0, T1;
+	int Hit = IntersectSegmentOBB(&Seg, &Box, &T0, &T1);
+	TEST(Hit, "seg-obb hit");
+}
+
+static void TestIntersectSegmentPlane(void) {
+	Vector3 S0 = KannaVector3Make(0,-5,0);
+	Vector3 S1 = KannaVector3Make(0,5,0);
+	Vector3 N = KannaVector3Make(0,1,0);
+	Segment Seg = SabinaSegmentMake(&S0, &S1);
+	Plane P = SabinaPlaneMake(&N, 0.0);
+	Real TOut;
+	int Hit = IntersectSegmentPlane(&Seg, &P, &TOut);
+	TEST(Hit, "seg-plane hit");
+	TEST(TOut >= 0 && TOut <= 1, "seg-plane t in [0,1]");
+}
+
 int main(void) {
 	fprintf(stderr, "=== TestGeometry ===\n");
 
@@ -425,6 +665,25 @@ int main(void) {
 	RUN_TEST(TestSphereClosestPointRay, "Sphere: closest point and ray");
 	RUN_TEST(TestOBBClosestPointCorners, "OBB: closest point and corners");
 	RUN_TEST(TestRayIntersectPlaneTriangle, "Ray: intersect plane and triangle");
+	RUN_TEST(TestIntersectSphereSphere, "Intersect: Sphere-Sphere");
+	RUN_TEST(TestIntersectSphereAABB, "Intersect: Sphere-AABB");
+	RUN_TEST(TestIntersectSpherePlane, "Intersect: Sphere-Plane");
+	RUN_TEST(TestIntersectSphereCapsule, "Intersect: Sphere-Capsule");
+	RUN_TEST(TestIntersectAABBPlane, "Intersect: AABB-Plane");
+	RUN_TEST(TestIntersectAABBOBB, "Intersect: AABB-OBB");
+	RUN_TEST(TestIntersectOBBOBB, "Intersect: OBB-OBB");
+	RUN_TEST(TestIntersectOBBPlane, "Intersect: OBB-Plane");
+	RUN_TEST(TestIntersectCapsuleCapsule, "Intersect: Capsule-Capsule");
+	RUN_TEST(TestIntersectRaySphere, "IntersectRay: Sphere");
+	RUN_TEST(TestIntersectRayAABB, "IntersectRay: AABB");
+	RUN_TEST(TestIntersectRayOBB, "IntersectRay: OBB");
+	RUN_TEST(TestIntersectRayPlane, "IntersectRay: Plane");
+	RUN_TEST(TestIntersectRayCapsule, "IntersectRay: Capsule");
+	RUN_TEST(TestIntersectRayTriangle, "IntersectRay: Triangle");
+	RUN_TEST(TestIntersectSegmentSphere, "IntersectSegment: Sphere");
+	RUN_TEST(TestIntersectSegmentAABB, "IntersectSegment: AABB");
+	RUN_TEST(TestIntersectSegmentOBB, "IntersectSegment: OBB");
+	RUN_TEST(TestIntersectSegmentPlane, "IntersectSegment: Plane");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;
