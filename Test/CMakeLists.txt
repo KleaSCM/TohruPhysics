@@ -54,3 +54,8 @@ add_executable(TestBodyState
 	Source/TestBodyState.cpp
 )
 target_link_libraries(TestBodyState PRIVATE TohruPhysics)
+
+add_executable(TestGJK
+	Source/TestGJK.cpp
+)
+target_link_libraries(TestGJK PRIVATE TohruPhysics)

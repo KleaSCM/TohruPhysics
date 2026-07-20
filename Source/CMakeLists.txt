@@ -61,3 +61,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	BodyState/BodyState.cpp
 )
+
+# GJK subsystem
+target_sources(TohruPhysics PRIVATE
+	GJK/GJK.cpp
+)
