@@ -91,11 +91,12 @@ Error TohruArenaInitFixed(Arena *A, void *Buffer, size_t Capacity) {
 }
 
 void TohruArenaDestroy(Arena *A) {
-	if (!A || !A->Base) {
+	if (!A->Base) {
 		return;
 	}
 
-	//  ZeroBlock のときは munmap しないわ。
+	// ZeroBlock — skip munmap since it wasn't allocated by mmap.
+	// ZeroBlock のときは munmap しないわ。
 	if (A->Base != (void *)TohruZeroBlock) {
 		size_t Mapped = MappedSize(A);
 		munmap(A->Base, Mapped);
@@ -136,13 +137,11 @@ static int EnsureSpace(Arena *A, size_t Needed) {
 }
 
 void *KobayashiAlloc(Arena *A, size_t Size) {
-	if (!A || Size == 0) {
+	if (Size == 0) {
 		return (void *)TohruZeroBlock;
 	}
 
 	if (EnsureSpace(A, Size) != 0) {
-		// Return the global stub instead of NULL.
-		// 呼び出し側は常に有効なポインタを得るの。
 		return (void *)TohruZeroBlock;
 	}
 
@@ -152,7 +151,7 @@ void *KobayashiAlloc(Arena *A, size_t Size) {
 }
 
 void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align) {
-	if (!A || Size == 0) {
+	if (Size == 0) {
 		return (void *)TohruZeroBlock;
 	}
 
@@ -178,7 +177,7 @@ void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align) {
 }
 
 void *KobayashiDup(Arena *A, const void *Src, size_t Size) {
-	if (!A || !Src || Size == 0) {
+	if (Size == 0) {
 		return (void *)TohruZeroBlock;
 	}
 
@@ -192,26 +191,20 @@ void *KobayashiDup(Arena *A, const void *Src, size_t Size) {
 // ---------------------------------------------------------------------------
 
 void ElmaArenaReset(Arena *A) {
-	if (A) {
-		A->Offset = 0;
-	}
+	A->Offset = 0;
 }
 
 void ElmaArenaClear(Arena *A) {
-	if (!A) {
-		return;
-	}
-
 	memset(A->Base, 0, A->Capacity);
 	A->Offset = 0;
 }
 
 size_t ElmaArenaUsed(Arena *A) {
-	return A ? A->Offset : 0;
+	return A->Offset;
 }
 
 size_t ElmaArenaRemaining(Arena *A) {
-	return A ? (A->Capacity - A->Offset) : 0;
+	return A->Capacity - A->Offset;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,23 +212,17 @@ size_t ElmaArenaRemaining(Arena *A) {
 // ---------------------------------------------------------------------------
 
 size_t IluluOffset(Arena *A, const void *Ptr) {
-	if (!A || !Ptr) {
-		return 0;
-	}
 	return (size_t)((const char *)Ptr - (const char *)A->Base);
 }
 
 void *IluluPtr(Arena *A, size_t Offset) {
-	if (!A || Offset >= A->Capacity) {
+	if (Offset >= A->Capacity) {
 		return (void *)TohruZeroBlock;
 	}
 	return (void *)((char *)A->Base + Offset);
 }
 
 int IluluOwns(Arena *A, const void *Ptr) {
-	if (!A || !Ptr) {
-		return 0;
-	}
 	const char *Base = (const char *)A->Base;
 	const char *End  = Base + A->Offset;
 	const char *P    = (const char *)Ptr;
@@ -253,22 +240,22 @@ Error YuyuArenaSetInit(ArenaSet *S, size_t FrameCap, size_t WorldCap, size_t Wor
 
 	Error Err;
 
-	Err = TohruArenaInit(&S->Arenas[ArenaType_Frame],
+	Err = TohruArenaInit(&S->Arenas[ArenaTypeFrame],
 		FrameCap > 0 ? FrameCap : ARENA_DEFAULT_CAPACITY);
 	if (ErrIsFail(Err)) return Err;
 
-	Err = TohruArenaInit(&S->Arenas[ArenaType_World],
+	Err = TohruArenaInit(&S->Arenas[ArenaTypeWorld],
 		WorldCap > 0 ? WorldCap : ARENA_DEFAULT_CAPACITY * 8);
 	if (ErrIsFail(Err)) {
-		TohruArenaDestroy(&S->Arenas[ArenaType_Frame]);
+		TohruArenaDestroy(&S->Arenas[ArenaTypeFrame]);
 		return Err;
 	}
 
-	Err = TohruArenaInit(&S->Arenas[ArenaType_Worker],
+	Err = TohruArenaInit(&S->Arenas[ArenaTypeWorker],
 		WorkerCap > 0 ? WorkerCap : ARENA_DEFAULT_CAPACITY);
 	if (ErrIsFail(Err)) {
-		TohruArenaDestroy(&S->Arenas[ArenaType_Frame]);
-		TohruArenaDestroy(&S->Arenas[ArenaType_World]);
+		TohruArenaDestroy(&S->Arenas[ArenaTypeFrame]);
+		TohruArenaDestroy(&S->Arenas[ArenaTypeWorld]);
 		return Err;
 	}
 
@@ -276,14 +263,11 @@ Error YuyuArenaSetInit(ArenaSet *S, size_t FrameCap, size_t WorldCap, size_t Wor
 }
 
 void YuyuArenaSetDestroy(ArenaSet *S) {
-	if (!S) return;
-
-	for (int I = 0; I < (int)ArenaType_Count; I++) {
+	for (int I = 0; I < (int)ArenaTypeCount; I++) {
 		TohruArenaDestroy(&S->Arenas[I]);
 	}
 }
 
 void YuyuArenaSetResetFrame(ArenaSet *S) {
-	if (!S) return;
-	ElmaArenaReset(&S->Arenas[ArenaType_Frame]);
+	ElmaArenaReset(&S->Arenas[ArenaTypeFrame]);
 }

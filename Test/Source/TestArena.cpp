@@ -289,26 +289,26 @@ static void TestYuyuArenaSet(void) {
 	Error Err = YuyuArenaSetInit(&S, 256, 1024, 256);
 	CHECK(ErrIsOk(Err), "arena set init failed");
 
-	KobayashiAlloc(&S.Arenas[ArenaType_Frame], 64);
+	KobayashiAlloc(&S.Arenas[ArenaTypeFrame], 64);
 	CHECK(
-		ElmaArenaUsed(&S.Arenas[ArenaType_Frame]) == 64,
+		ElmaArenaUsed(&S.Arenas[ArenaTypeFrame]) == 64,
 		"frame used not 64"
 	);
 	YuyuArenaSetResetFrame(&S);
 	CHECK(
-		ElmaArenaUsed(&S.Arenas[ArenaType_Frame]) == 0,
+		ElmaArenaUsed(&S.Arenas[ArenaTypeFrame]) == 0,
 		"frame used not 0 after reset"
 	);
 
-	KobayashiAlloc(&S.Arenas[ArenaType_World], 128);
+	KobayashiAlloc(&S.Arenas[ArenaTypeWorld], 128);
 	CHECK(
-		ElmaArenaUsed(&S.Arenas[ArenaType_World]) == 128,
+		ElmaArenaUsed(&S.Arenas[ArenaTypeWorld]) == 128,
 		"world used not 128 after frame reset"
 	);
 
 	YuyuArenaSetDestroy(&S);
 
-	for (int I = 0; I < (int)ArenaType_Count; I++) {
+	for (int I = 0; I < (int)ArenaTypeCount; I++) {
 		CHECK(S.Arenas[I].Base == NULL, "arena not destroyed");
 	}
 

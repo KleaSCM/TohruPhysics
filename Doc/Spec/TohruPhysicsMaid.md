@@ -426,16 +426,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0022. Write defensive clamping utilities ensuring scalar variables cannot violate physical boundaries.
 
 #### 1.3 Linear Algebra & Vector Mathematics
-- [ ] 0023. Implement a primitive `Vector3` contiguous raw data layout structure using pure arrays.
-- [ ] 0024. Write `Vector3Add` logic passing parameters by strict `const Vector3&`.
-- [ ] 0025. Write `Vector3Subtract` logic returning computed results by value.
-- [ ] 0026. Implement `Vector3Scale` functionality handling raw scalar adjustments.
-- [ ] 0027. Write `Vector3Dot` scalar product computations using non-overflowing algorithms.
-- [ ] 0028. Write `Vector3Cross` vector product operations for rigid body orientation cross-mapping.
-- [ ] 0029. Implement `Vector3LengthSquared` evaluations to bypass costly square root processing when optimizing.
-- [ ] 0030. Implement `Vector3Normalize` routines utilizing the zero-block fallback check on null vectors.
-- [ ] 0031. Write `Vector3Distance` metrics to compute relative spatial separations.
-- [ ] 0032. Implement `Vector3Equal` bounds testing utilizing the standard epsilon rules.
+- [x] 0023. Implement a primitive `Vector3` contiguous raw data layout structure using pure arrays.
+- [x] 0024. Write `Vector3Add` logic passing parameters by strict `const Vector3&`.
+- [x] 0025. Write `Vector3Subtract` logic returning computed results by value.
+- [x] 0026. Implement `Vector3Scale` functionality handling raw scalar adjustments.
+- [x] 0027. Write `Vector3Dot` scalar product computations using non-overflowing algorithms.
+- [x] 0028. Write `Vector3Cross` vector product operations for rigid body orientation cross-mapping.
+- [x] 0029. Implement `Vector3LengthSquared` evaluations to bypass costly square root processing when optimizing.
+- [x] 0030. Implement `Vector3Normalize` routines utilizing the zero-block fallback check on null vectors.
+- [x] 0031. Write `Vector3Distance` metrics to compute relative spatial separations.
+- [x] 0032. Implement `Vector3Equal` bounds testing utilizing the standard epsilon rules.
 
 #### 1.4 Matrix Operations
 - [ ] 0033. Implement a contiguous row-major `Matrix3x3` transformation matrix layout structure.

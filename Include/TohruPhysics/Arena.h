@@ -131,14 +131,14 @@ int    IluluOwns(Arena *A, const void *Ptr);
 //  アリーナ分割 — スコープ付きサブアリーナね。
 // ---------------------------------------------------------------------------
 typedef enum {
-	ArenaType_Frame,
-	ArenaType_World,
-	ArenaType_Worker,
-	ArenaType_Count
+	ArenaTypeFrame,
+	ArenaTypeWorld,
+	ArenaTypeWorker,
+	ArenaTypeCount
 } ArenaType;
 
 typedef struct {
-	Arena Arenas[ArenaType_Count];
+	Arena Arenas[ArenaTypeCount];
 } ArenaSet;
 
 Error YuyuArenaSetInit(ArenaSet *S, size_t FrameCap, size_t WorldCap, size_t WorkerCap);

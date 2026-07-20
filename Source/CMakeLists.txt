@@ -16,3 +16,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	Math/Math.cpp
 )
+
+# Vector subsystem
+target_sources(TohruPhysics PRIVATE
+	Vector3/Vector3.cpp
+)

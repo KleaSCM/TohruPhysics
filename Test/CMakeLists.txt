@@ -9,3 +9,8 @@ add_executable(TestMath
 	Source/TestMath.cpp
 )
 target_link_libraries(TestMath PRIVATE TohruPhysics)
+
+add_executable(TestVector3
+	Source/TestVector3.cpp
+)
+target_link_libraries(TestVector3 PRIVATE TohruPhysics)
