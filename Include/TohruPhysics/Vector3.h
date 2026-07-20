@@ -2,9 +2,6 @@
  * Vector3 — contiguous 3-element vector for TohruPhysics.
  * TohruPhysics用の連続3要素ベクトルね。
  *
- * ZII: every operation returns a valid Vector3.
- * ZII: 全ての操作は有効な Vector3 を返すわ。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */

@@ -1,6 +1,40 @@
 /**
- * Expandable page-aligned bump arena for TohruPhysics.
+ * Arena — page-aligned expandable bump allocator.
  * TohruPhysics用の拡張可能なページアラインメントバンプアリーナね。
+ *
+ * Contiguous virtual memory region with bump-pointer allocation.
+ * Grows via mremap(2) when exhausted. Never returns null — OOM returns
+ * &TohruZeroBlock (a zeroed .bss page) so callers never branch.
+ *
+ * DESIGN PHILOSOPHY:
+ * Physics engines allocate millions of short-lived objects per frame
+ * (contacts, constraints, islands). Per-object malloc/free destroys
+ * cache locality and fragments the heap. A bump arena allocates in
+ * O(1), has zero fragmentation, and batch-frees by resetting the
+ * offset — no per-element destructors needed.
+ *
+ * Backed by mmap/mremap with MREMAP_MAYMOVE so the arena can grow
+ * without reserving virtual address space up front. Doubles capacity
+ * on each expansion (geometric growth).
+ *
+ * MEMORY LAYOUT:
+ * ┌──────────────────────────────────────────────────────────┐
+ * │  mmap'd page-aligned region (or external fixed buffer)   │
+ * ├──────────────────────┬───────────────────────────────────┤
+ * │    Allocated data    │        Free (remaining)           │
+ * ├──────────────────────┴───────────────────────────────────┤
+ * │ 0                Offset                              Capacity │
+ * └──────────────────────────────────────────────────────────┘
+ *
+ * ZEROBLOCK:
+ * ┌──────────────────────────────────────────────────────────┐
+ * │ 4096 bytes of .bss zeroes (global TohruZeroBlock)        │
+ * │ Every OOM path aliases here. Never a null deref.         │
+ * └──────────────────────────────────────────────────────────┘
+ *
+ * References:
+ * - mmap(2), mremap(2) — Linux virtual memory syscalls
+ * - "Arena Allocator" pattern in game engine memory systems
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -11,26 +45,13 @@
 #include <stdint.h>
 #include <TohruPhysics/Error.h>
 
-// ---------------------------------------------------------------------------
-//  ZeroBlock — global fallback zeroed page.
-//  グローバルフォールバックのゼロ埋めページね。
-//
-//  Every runtime allocation returns a valid pointer. When the arena cannot
-//  grow, it returns &TohruZeroBlock. The first write might segfault but
-//  in practice the arena sizing is tuned so this path is never hit in
-//  production — this is a safety net for malformed scenes, not a normal
-//  code path.
-//  全てのランタイム確保が有効なポインタを返すの。アリーナが拡張できないときは
-//  &TohruZeroBlockを返すわ。プロダクションではこのパスは絶対に通らない
-//  セーフティネットよ。
-// ---------------------------------------------------------------------------
 #define ZEROBLOCK_SIZE ((size_t)4096)
 
 extern char TohruZeroBlock[ZEROBLOCK_SIZE];
 
 // ---------------------------------------------------------------------------
-//  Arena — expandable bump allocator.
-//  拡張可能なバンプアロケーターね。
+//  Arena — bump allocator state
+//  バンプアロケーターの状態ね。
 // ---------------------------------------------------------------------------
 typedef struct {
 	void  *Base;
@@ -41,93 +62,29 @@ typedef struct {
 #define ARENA_DEFAULT_CAPACITY ((size_t)64 * 1024)
 #define ARENA_MIN_ALIGNMENT    ((size_t)16)
 
-/**
- * Tohru — initialise an arena with page-aligned mmap.
- * mmapでページアラインメントしてアリーナを初期化するわ。
- */
 Error TohruArenaInit(Arena *A, size_t InitCap);
-
-/**
- * Tohru — initialise an arena from an externally owned buffer (no growth).
- * 外部バッファからアリーナを初期化するわ（拡張なし）。
- */
 Error TohruArenaInitFixed(Arena *A, void *Buffer, size_t Capacity);
+void  TohruArenaDestroy(Arena *A);
 
-/**
- * Tohru — release the backing pages.
- * バッキングページを解放するの。
- */
-void TohruArenaDestroy(Arena *A);
-
-/**
- * Kobayashi — allocate bytes. Never returns null.
- * バイト列を確保するの。絶対にnullにならないわ。
- *
- * On OOM returns &TohruZeroBlock. Callers never check for null.
- * OOMのときは&TohruZeroBlockを返すの。呼び出し側はnullチェックしないでね。
- */
 void *KobayashiAlloc(Arena *A, size_t Size);
-
-/**
- * Kobayashi — allocate zeroed bytes. Never returns null.
- * ゼロ埋めバイト列を確保するの。絶対にnullにならないわ。
- */
 void *KobayashiAllocZeroed(Arena *A, size_t Size);
-
-/**
- * Kobayashi — allocate with explicit alignment. Never null.
- * 指定したアラインメントで確保するの。絶対にnullにならないわ。
- */
 void *KobayashiAllocAlign(Arena *A, size_t Size, size_t Align);
-
-/**
- * Kobayashi — duplicate a memory block. Never null.
- * メモリブロックを複製するの。絶対にnullにならないわ。
- */
 void *KobayashiDup(Arena *A, const void *Src, size_t Size);
 
-/**
- * Elma — reset the arena offset (O(1), does NOT zero memory).
- * アリーナのオフセットをリセットするの（メモリはゼロにしない）。
- */
-void ElmaArenaReset(Arena *A);
-
-/**
- * Elma — zero everything and reset (O(n)).
- * 全メモリをゼロにしてリセットするの。
- */
-void ElmaArenaClear(Arena *A);
-
-/**
- * Elma — query arena state.
- * アリーナの状態を確認するの。
- */
+void   ElmaArenaReset(Arena *A);
+void   ElmaArenaClear(Arena *A);
 size_t ElmaArenaUsed(Arena *A);
 size_t ElmaArenaRemaining(Arena *A);
-
-/**
- * Elma — save a snapshot for rollback (O(1), just records offset).
- * ロールバック用のスナップショットを保存(O(1)、オフセットだけ記録)。
- */
 size_t ElmaArenaSnapshot(Arena *A);
+void   ElmaArenaRollback(Arena *A, size_t Snapshot);
 
-/**
- * Elma — rollback to a snapshot (O(1), restores offset, does NOT free memory).
- * スナップショットにロールバック(O(1)、オフセット復元、メモリ解放はしない)。
- */
-void ElmaArenaRollback(Arena *A, size_t Snapshot);
-
-/**
- * Ilulu — pointer / offset conversion.
- * ポインタとオフセットの変換をするの。
- */
 size_t IluluOffset(Arena *A, const void *Ptr);
 void  *IluluPtr(Arena *A, size_t Offset);
 int    IluluOwns(Arena *A, const void *Ptr);
 
 // ---------------------------------------------------------------------------
-//  Arena partitioning — scoped sub-arenas.
-//  アリーナ分割 — スコープ付きサブアリーナね。
+//  ArenaSet — partitioned sub-arenas by lifetime scope
+//  ライフタイムスコープ別の分割サブアリーナね。
 // ---------------------------------------------------------------------------
 typedef enum {
 	ArenaTypeFrame,

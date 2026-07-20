@@ -22,6 +22,19 @@ endif()
 
 option(TP_BUILD_TESTS "Build unit tests" ON)
 option(TP_BUILD_DEMOS "Build demos" ON)
+option(TP_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(TP_USE_UBSAN "Build with UndefinedBehaviorSanitizer" OFF)
+option(TP_USE_ASAN "Build with AddressSanitizer" OFF)
+
+if(TP_USE_UBSAN)
+	add_compile_options(-fsanitize=undefined -fno-sanitize-recover=undefined)
+	add_link_options(-fsanitize=undefined)
+endif()
+
+if(TP_USE_ASAN)
+	add_compile_options(-fsanitize=address -fno-sanitize-recover=address)
+	add_link_options(-fsanitize=address)
+endif()
 
 add_subdirectory(Source)
 
@@ -31,4 +44,8 @@ endif()
 
 if(TP_BUILD_DEMOS AND EXISTS "${CMAKE_SOURCE_DIR}/Demo/CMakeLists.txt")
 	add_subdirectory(Demo)
+endif()
+
+if(TP_BUILD_BENCHMARKS AND EXISTS "${CMAKE_SOURCE_DIR}/Bench/CMakeLists.txt")
+	add_subdirectory(Bench)
 endif()

@@ -5,9 +5,6 @@
  * Row-major layout: Data[Row*Stride + Col].
  * 行優先レイアウト: Data[行*幅 + 列]。
  *
- * ZII: every operation returns a valid matrix/vector.
- * ZII: 全ての操作は有効な行列/ベクトルを返すわ。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */

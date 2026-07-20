@@ -2,9 +2,6 @@
  * Primitive geometric shapes for TohruPhysics.
  * TohruPhysics用の基本幾何形状よ。
  *
- * ZII: every shape is zero-initializable. Zero is valid.
- * ZII: 全ての形状はゼロ初期化可能。ゼロは有効よ。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */

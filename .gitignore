@@ -28,3 +28,9 @@ extern/
 # Misc
 *.log
 *.tmp
+.clang-tidy
+.clang-format
+.clang-tidy
+.clang-tidy
+.clang-format
+Doc/Spec/HeaderTemplate.txt

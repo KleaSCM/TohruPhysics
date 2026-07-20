@@ -2,9 +2,6 @@
  * Transform type — spatial position + rotation.
  * トランスフォーム型 — 空間位置＋回転よ。
  *
- * ZII: every operation returns a valid Transform/Vector3.
- * ZII: 全ての操作は有効な Transform/Vector3 を返すわ。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */

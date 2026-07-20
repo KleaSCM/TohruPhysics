@@ -2,9 +2,6 @@
  * Error types for TohruPhysics — init/startup only, not runtime.
  * TohruPhysics用のエラー型 — 初期化/起動専用、実行パスでは使わないの。
  *
- * ZII: runtime functions never return Error. Only init/startup.
- * ZII: ランタイム関数はエラーを返さないの。初期化/起動のみよ。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */

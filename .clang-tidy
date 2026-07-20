@@ -1,26 +1,47 @@
 ---
 Checks: >
-	-*,
-	bugprone-*,
-	clang-analyzer-*,
-	misc-*,
-	modernize-*,
-	performance-*,
-	portability-*,
-	readability-*,
-	-cppcoreguidelines-*,
-	-llvm-*,
-	-llvmlibc-*,
-	-misc-non-private-member-variables-in-classes,
-	-modernize-use-trailing-return-type,
-	-readability-identifier-length,
-	-readability-magic-numbers,
-	-readability-named-parameter,
-	-readability-uppercase-literal-suffix,
+  -*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  google-*,
+  misc-*,
+  llvm-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-type-union-access,
+  -llvm-header-guard,
+  -google-readability-todo,
+  -google-readability-namespace-comments,
+  -misc-non-private-member-variables-in-classes,
+
+WarningsAsErrors: >
+  clang-diagnostic-*,
+  cppcoreguidelines-no-malloc,
+  cppcoreguidelines-owning-memory,
+  bugprone-exception-escape,
+  bugprone-unhandled-exception-at-new,
+  google-explicit-constructor,
+  modernize-use-override,
+  performance-faster-string-find,
+  performance-for-range-copy,
+  readability-braces-around-statements,
+  readability-container-size-empty,
+
 CheckOptions:
-  - key: readability-function-cognitive-complexity.Threshold
-    value: '50'
-WarningsAsErrors: '*'
-HeaderFilterRegex: '.*'
-FormatStyle: file
-...
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: 0
+  - key: modernize-use-default-member-init.UseAssignment
+    value: 1
+  - key: performance-move-const-arg.CheckTriviallyCopyableMove
+    value: 1
+
+# Forbidden: exceptions, new, delete — these will produce errors
+# 禁止: 例外、new、delete — エラーになるわ

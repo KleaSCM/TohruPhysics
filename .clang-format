@@ -1,9 +1,17 @@
 ---
-BasedOnStyle: Chromium
+Language: Cpp
+BasedOnStyle: LLVM
+
+# Tabs
 UseTab: Always
-IndentWidth: 4
-TabWidth: 4
+IndentWidth: 8
+TabWidth: 8
+
+# 120 column limit
 ColumnLimit: 120
+PenaltyExcessCharacter: 100
+
+# K&R bracing — open brace on same line
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterClass: false
@@ -19,18 +27,49 @@ BraceWrapping:
   SplitEmptyFunction: false
   SplitEmptyRecord: false
   SplitEmptyNamespace: false
-AllowShortFunctionsOnASingleLine: None
-AllowShortIfStatementsOnASingleLine: Never
-AllowShortLoopsOnASingleLine: false
-SpaceAfterTemplateKeyword: false
-Standard: c++20
+
+# Indent case labels under switch
+IndentCaseLabels: true
+IndentPPDirectives: AfterHash
+
+# Pointer/reference alignment — space after (int *X)
 PointerAlignment: Left
 ReferenceAlignment: Left
+
+# Spaces
+SpaceAfterCStyleCast: true
+SpaceAfterTemplateKeyword: true
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInAngles: false
+SpacesInContainerLiterals: true
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# Line breaks
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackArguments: true
+BinPackParameters: true
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+PenaltyReturnTypeOnItsOwnLine: 60
+
+# Includes
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<.*>'
+  - Regex: '^<.*\.h>'
     Priority: 1
-  - Regex: '^".*"'
+  - Regex: '^<[^"]*>'
     Priority: 2
+  - Regex: '^".*"'
+    Priority: 3
 SortIncludes: true
-...
+
+# Namespace
+NamespaceIndentation: None
+FixNamespaceComments: true
+
+# Comments
+ReflowComments: false
+AlignTrailingComments: true

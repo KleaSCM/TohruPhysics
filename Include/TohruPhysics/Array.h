@@ -2,9 +2,6 @@
  * Array type — contiguous arena-backed collection.
  * 配列型 — アリーナバックアップの連続コレクションよ。
  *
- * ZII: every access returns valid memory. OOB Get → &TohruZeroBlock.
- * ZII: 全てのアクセスは有効なメモリを返すわ。範囲外 Get → &TohruZeroBlock。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */

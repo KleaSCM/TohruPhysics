@@ -5,9 +5,6 @@
  * Layout: Data[4] = (X, Y, Z, W).
  * レイアウト: Data[4] = (X, Y, Z, W)。
  *
- * ZII: every operation returns a valid quaternion.
- * ZII: 全ての操作は有効なクォータニオンを返すわ。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */

@@ -1,13 +1,3 @@
----
-name: style-guide
-description: >
-  KleaSCM's universal code style guide for TypeScript, TSX, C++, Go, and Rust. ALWAYS
-  Load this skill before writing, reviewing, editing, or generating ANY code
-  even for small snippets, refactors, or examples. Also triggers on: "does this follow style",
-  "fix the formatting", "review this code", "write a function", "add a method", "scaffold",
-  "implement X", or any task that produces source code in TS/TSX/C++/Go/Rust. When in doubt, load it.
----
-
 # KleaSCM Style Guide
 
 Apply every rule below unconditionally. No exceptions.
@@ -126,21 +116,95 @@ is never reached; it exists solely to eliminate branches.
 
 ### Module Header
 
-```go
+Every file starts with a block that tells you:
+1. What this module IS (title + one-line type description)
+2. How it WORKS (design philosophy, context, trade-offs)
+3. Data layout / interface description (with ASCII diagram if relevant)
+4. Who wrote it
+
+```cpp
 /**
- * Candidate generation index for AlgoQueen.
- * AlgoQueenの候補生成インデックスね。
+ * Module Name (ACRONYM) — one-line title.
  *
- * Builds an inverted tag index at startup to avoid O(n) scans per query.
- * 起動時に転置タグインデックスを構築して、クエリごとのO(n)スキャンを避けるようにしてあるの。
+ * One-line type description.
+ *
+ * Paragraph explaining how the module works — what problem it solves,
+ * what approach it takes, why that approach was chosen. Reference real
+ * hardware / algorithms / standards that inspired the design.
+ *
+ * DESIGN PHILOSOPHY:
+ * Explain the key architectural decisions, trade-offs, and constraints.
+ * Why was this approach chosen over alternatives? What systems does it
+ * draw inspiration from?
+ *
+ * REGISTER MAP / DATA LAYOUT / INTERFACE:
+ * ┌────────────┬─────────────────────────────────────────────────┐
+ * │ Name       │ Description (use ASCII tables when relevant)     │
+ * ├────────────┼─────────────────────────────────────────────────┤
+ * │ Field      │ What it does, type, semantics                   │
+ * └────────────┴─────────────────────────────────────────────────┘
+ *
+ * [ASCII bitfield diagram if relevant]
+ * ┌───┬───┬───┬───┬───┬───┬───┬───┐
+ * │ 7 │ 6 │ 5 │ 4 │ 3 │ 2 │ 1 │ 0 │
+ * └───┴───┴───┴───┴───┴───┴───┴───┘
+ *   │                                       └── Bit 0 description
+ *   └─────────────────────────────────────── Bit 7 description
+ *
+ * Detailed description of each field / register / method group:
+ * FIELD_NAME (Offset):
+ * - What it does
+ * - Read/write semantics
+ * - Values and their meaning
+ *
+ * WORKFLOW (if relevant):
+ * 1. Step one
+ * 2. Step two
+ * 3. Step three
+ *
+ * PHYSICAL EQUIVALENTS / REFERENCES:
+ * - Standard/library/algorithm this is based on
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */
 ```
 
-- **Public API docs**: only if the signature alone is insufficient (e.g. side effects).
-- **Annotated notes**: `// NOTE (KleaSCM) <content>` — always signed.
+Key principles:
+- **Title + one-line type description** are mandatory
+- **Design philosophy** is mandatory for complex modules
+- **ASCII diagrams** are encouraged for data layouts, register maps, state machines, algorithm flows
+- **Author/Email** is mandatory
+- **NEVER put function names** in the header block (they go in their own doc comments)
+- Japanese follows the same structure after each English section
+
+Example (simpler module — no registers, no hardware):
+
+```cpp
+/**
+ * Fixed-width scalar math for TohruPhysics.
+ * TohruPhysics用の固定幅スカラー数学ね。
+ *
+ * IEEE 754 double-precision math with explicit NaN/Inf guarding.
+ * All functions sanitize inputs — return 0.0 for any degenerate case.
+ *
+ * DESIGN PHILOSOPHY:
+ * Physics engines call trig and sqrt millions of times per frame.
+ * The standard library doubles (libm) guarantee 1 ULP accuracy but
+ * are unnecessarily precise for physics simulation where 1e-4
+ * relative error is invisible. We use range-reduced polynomial
+ * approximations (9th-order Taylor for sin/cos, Newton-raphson
+ * for invsqrt) that are 3-5x faster at 1e-6 accuracy.
+ *
+ * References:
+ * - sin/cos: 9th-order Taylor on [0, PI/2] with quadrant reduction
+ * - invsqrt: Quake-style bit hack + 3 Newton iterations
+ * - acos: domain-split asin via sqrt identity
+ *
+ * Author: KleaSCM
+ * Email: KleaSCM@gmail.com
+ */
+```
 
 ### WHY Comments
 
@@ -498,16 +562,16 @@ Defensive Programming --> Performance --> Safety
 - [ ] 0080. Implement a `Triangle` layout mapping absolute vertex locations for structural mesh configurations.
 
 #### 1.10 Base Module Setup & Compilation Controls
-- [ ] 0081. Establish standard `.editorconfig` baseline matching tabs-only and maximum line parameters.
-- [ ] 0082. Establish comprehensive `ClangFormat` verification files maintaining strict K&R structural setups.
-- [ ] 0083. Establish `ClangTidy` rule maps forbidding exceptions, allocations via new, or raw delete sequences.
-- [ ] 0084. Author standard module header blocks containing bilingual operational parameters.
-- [ ] 0085. Implement automated shell scripts within the `Test` path verifying overall engine execution status.
-- [ ] 0086. Implement automated shell scripts within the `Demo` path verifying visualization compilation setups.
-- [ ] 0087. Design internal execution benchmarks mapping core system clock ticks accurately.
-- [ ] 0088. Implement structural validation frameworks ensuring zero code relies on undefined behavior conditions.
-- [ ] 0089. Configure precise tracking logic within test systems mapping assertion checks.
-- [ ] 0090. Build static allocation checks to confirm no dynamic heap interactions creep into hot paths.
+- [x] 0081. Establish standard `.editorconfig` baseline matching tabs-only and maximum line parameters.
+- [x] 0082. Establish comprehensive `ClangFormat` verification files maintaining strict K&R structural setups.
+- [x] 0083. Establish `ClangTidy` rule maps forbidding exceptions, allocations via new, or raw delete sequences.
+- [x] 0084. Author standard module header blocks containing bilingual operational parameters.
+- [x] 0085. Implement automated shell scripts within the `Test` path verifying overall engine execution status.
+- [x] 0086. Implement automated shell scripts within the `Demo` path verifying visualization compilation setups.
+- [x] 0087. Design internal execution benchmarks mapping core system clock ticks accurately.
+- [x] 0088. Implement structural validation frameworks ensuring zero code relies on undefined behavior conditions.
+- [x] 0089. Configure precise tracking logic within test systems mapping assertion checks.
+- [x] 0090. Build static allocation checks to confirm no dynamic heap interactions creep into hot paths.
 
 #### 1.11 Core Physical State Definitions
 - [ ] 0091. Implement a `RigidBodyState` tracking configuration containing positions, linear velocities, and forces.
