@@ -2,6 +2,7 @@
 build/
 cmake-build-*/
 out/
+Build/
 
 # IDE & editor
 .vscode/
@@ -9,7 +10,6 @@ out/
 *.swp
 *.swo
 *~
-Build/
 # OS
 .DS_Store
 Thumbs.db

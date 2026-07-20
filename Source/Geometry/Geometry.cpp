@@ -8,6 +8,8 @@
 #include <TohruPhysics/Geometry.h>
 #include <TohruPhysics/Math.h>
 #include <TohruPhysics/Quaternion.h>
+#include <string.h>
+#include <math.h>
 
 // ===========================================================================
 //  AABB
@@ -31,6 +33,49 @@ AABB SabinaAABBMakeCenterExtents(const Vector3 *Center, const Vector3 *HalfExten
 	return Box;
 }
 
+AABB SabinaAABBMerge(const AABB *A, const AABB *B) {
+	AABB Box;
+	Box.Min = KannaVector3Min(&A->Min, &B->Min);
+	Box.Max = KannaVector3Max(&A->Max, &B->Max);
+	return Box;
+}
+
+AABB SabinaAABBExpand(const AABB *Box, Real Margin) {
+	AABB E;
+	E.Min.Data[0] = Box->Min.Data[0] - Margin;
+	E.Min.Data[1] = Box->Min.Data[1] - Margin;
+	E.Min.Data[2] = Box->Min.Data[2] - Margin;
+	E.Max.Data[0] = Box->Max.Data[0] + Margin;
+	E.Max.Data[1] = Box->Max.Data[1] + Margin;
+	E.Max.Data[2] = Box->Max.Data[2] + Margin;
+	return E;
+}
+
+Vector3 SabinaAABBCenter(const AABB *Box) {
+	return KannaVector3Midpoint(&Box->Min, &Box->Max);
+}
+
+Vector3 SabinaAABBHalfExtents(const AABB *Box) {
+	Vector3 D = KannaVector3Sub(&Box->Max, &Box->Min);
+	D.Data[0] *= 0.5;
+	D.Data[1] *= 0.5;
+	D.Data[2] *= 0.5;
+	return D;
+}
+
+Real SabinaAABBSurfaceArea(const AABB *Box) {
+	Vector3 D = KannaVector3Sub(&Box->Max, &Box->Min);
+	Real W = YuuAbs(D.Data[0]);
+	Real H = YuuAbs(D.Data[1]);
+	Real L = YuuAbs(D.Data[2]);
+	return 2.0 * (W * H + H * L + L * W);
+}
+
+Real SabinaAABBVolume(const AABB *Box) {
+	Vector3 D = KannaVector3Sub(&Box->Max, &Box->Min);
+	return YuuAbs(D.Data[0]) * YuuAbs(D.Data[1]) * YuuAbs(D.Data[2]);
+}
+
 int SabinaAABBContains(const AABB *Box, const Vector3 *Point) {
 	for (int I = 0; I < 3; I++) {
 		if (Point->Data[I] < Box->Min.Data[I]) return 0;
@@ -47,6 +92,37 @@ int SabinaAABBOverlaps(const AABB *A, const AABB *B) {
 	return 1;
 }
 
+Vector3 SabinaAABBClosestPoint(const AABB *Box, const Vector3 *P) {
+	Vector3 C;
+	C.Data[0] = YuuClamp(P->Data[0], Box->Min.Data[0], Box->Max.Data[0]);
+	C.Data[1] = YuuClamp(P->Data[1], Box->Min.Data[1], Box->Max.Data[1]);
+	C.Data[2] = YuuClamp(P->Data[2], Box->Min.Data[2], Box->Max.Data[2]);
+	return C;
+}
+
+int SabinaAABBIntersectRay(const AABB *Box, const Ray *R, Real *T0, Real *T1) {
+	Real TMin = -1e30;
+	Real TMax =  1e30;
+
+	for (int I = 0; I < 3; I++) {
+		Real InvD = 1.0 / R->Direction.Data[I];
+		Real T1s = (Box->Min.Data[I] - R->Origin.Data[I]) * InvD;
+		Real T2s = (Box->Max.Data[I] - R->Origin.Data[I]) * InvD;
+		if (T1s > T2s) {
+			Real Tmp = T1s; T1s = T2s; T2s = Tmp;
+		}
+		if (T1s > TMin) TMin = T1s;
+		if (T2s < TMax) TMax = T2s;
+		if (TMin > TMax) return 0;
+	}
+
+	if (TMax < REAL_ZERO) return 0;
+
+	*T0 = TMin > REAL_ZERO ? TMin : REAL_ZERO;
+	*T1 = TMax;
+	return 1;
+}
+
 // ===========================================================================
 //  Sphere
 // ===========================================================================
@@ -58,17 +134,54 @@ Sphere SabinaSphereMake(const Vector3 *Center, Real Radius) {
 	return S;
 }
 
+Real SabinaSphereVolume(const Sphere *S) {
+	return (4.0 / 3.0) * REAL_PI * S->Radius * S->Radius * S->Radius;
+}
+
+Real SabinaSphereSurfaceArea(const Sphere *S) {
+	return 4.0 * REAL_PI * S->Radius * S->Radius;
+}
+
 int SabinaSphereContains(const Sphere *S, const Vector3 *Point) {
-	Vector3 D = KannaVector3Sub(Point, &S->Center);
-	Real DistSq = KannaVector3Dot(&D, &D);
+	Real DistSq = KannaVector3DistanceSq(&S->Center, Point);
 	return DistSq <= S->Radius * S->Radius;
 }
 
 int SabinaSphereOverlaps(const Sphere *A, const Sphere *B) {
-	Vector3 D = KannaVector3Sub(&A->Center, &B->Center);
-	Real DistSq = KannaVector3Dot(&D, &D);
+	Real DistSq = KannaVector3DistanceSq(&A->Center, &B->Center);
 	Real RSum = A->Radius + B->Radius;
 	return DistSq <= RSum * RSum;
+}
+
+Vector3 SabinaSphereClosestPoint(const Sphere *S, const Vector3 *P) {
+	Vector3 D = KannaVector3Sub(P, &S->Center);
+	Real DistSq = KannaVector3LengthSq(&D);
+	if (DistSq <= S->Radius * S->Radius) {
+		return *P;
+	}
+	Real Dist = SulettaSqrt(DistSq);
+	Vector3 Dir = KannaVector3Scale(&D, 1.0 / Dist);
+	return KannaVector3Add(&S->Center, &KannaVector3Scale(&Dir, S->Radius));
+}
+
+int SabinaSphereIntersectRay(const Sphere *S, const Ray *R, Real *T0, Real *T1) {
+	Vector3 OC = KannaVector3Sub(&R->Origin, &S->Center);
+	Real A = KannaVector3Dot(&R->Direction, &R->Direction);
+	Real B = 2.0 * KannaVector3Dot(&OC, &R->Direction);
+	Real C = KannaVector3Dot(&OC, &OC) - S->Radius * S->Radius;
+	Real Disc = B * B - 4.0 * A * C;
+	if (Disc < REAL_ZERO) return 0;
+
+	Real SqrtDisc = SulettaSqrt(Disc);
+	Real Inv2A = 1.0 / (2.0 * A);
+	Real T1s = (-B - SqrtDisc) * Inv2A;
+	Real T2s = (-B + SqrtDisc) * Inv2A;
+
+	if (T2s < REAL_ZERO) return 0;
+
+	*T0 = T1s > REAL_ZERO ? T1s : REAL_ZERO;
+	*T1 = T2s;
+	return 1;
 }
 
 // ===========================================================================
@@ -84,8 +197,6 @@ OBB SabinaOBBMake(const Vector3 *Center, const Vector3 *HalfExtents, const Quate
 }
 
 int SabinaOBBContains(const OBB *Box, const Vector3 *Point) {
-	// Transform point to OBB local space.
-	// 点をOBBのローカル空間に変換するの。
 	Vector3 Local = KannaVector3Sub(Point, &Box->Center);
 	Quaternion Conj = EuphylliaQuaternionConjugate(&Box->Rotation);
 	Local = EuphylliaQuaternionRotateVector(&Conj, &Local);
@@ -95,6 +206,47 @@ int SabinaOBBContains(const OBB *Box, const Vector3 *Point) {
 		if (Local.Data[I] >  Box->HalfExtents.Data[I]) return 0;
 	}
 	return 1;
+}
+
+Vector3 SabinaOBBClosestPoint(const OBB *Box, const Vector3 *P) {
+	Vector3 Local = KannaVector3Sub(P, &Box->Center);
+	Quaternion Conj = EuphylliaQuaternionConjugate(&Box->Rotation);
+	Local = EuphylliaQuaternionRotateVector(&Conj, &Local);
+
+	// Clamp in local space.
+	Local.Data[0] = YuuClamp(Local.Data[0], -Box->HalfExtents.Data[0], Box->HalfExtents.Data[0]);
+	Local.Data[1] = YuuClamp(Local.Data[1], -Box->HalfExtents.Data[1], Box->HalfExtents.Data[1]);
+	Local.Data[2] = YuuClamp(Local.Data[2], -Box->HalfExtents.Data[2], Box->HalfExtents.Data[2]);
+
+	// Rotate back to world space.
+	Vector3 World = EuphylliaQuaternionRotateVector(&Box->Rotation, &Local);
+	return KannaVector3Add(&Box->Center, &World);
+}
+
+void SabinaOBBGetCorners(const OBB *Box, Vector3 Corners[8]) {
+	Vector3 H = Box->HalfExtents;
+	Vector3 Axes[3];
+	Axes[0] = EuphylliaQuaternionRotateVector(&Box->Rotation, &KannaVector3Make(1, 0, 0));
+	Axes[1] = EuphylliaQuaternionRotateVector(&Box->Rotation, &KannaVector3Make(0, 1, 0));
+	Axes[2] = EuphylliaQuaternionRotateVector(&Box->Rotation, &KannaVector3Make(0, 0, 1));
+
+	Vector3 Ext[3];
+	Ext[0] = KannaVector3Scale(&Axes[0], H.Data[0]);
+	Ext[1] = KannaVector3Scale(&Axes[1], H.Data[1]);
+	Ext[2] = KannaVector3Scale(&Axes[2], H.Data[2]);
+
+	int I, J, K, Idx = 0;
+	for (I = -1; I <= 1; I += 2) {
+		for (J = -1; J <= 1; J += 2) {
+			for (K = -1; K <= 1; K += 2) {
+				Vector3 P = Box->Center;
+				P = KannaVector3Add(&P, &KannaVector3Scale(&Ext[0], (Real)I));
+				P = KannaVector3Add(&P, &KannaVector3Scale(&Ext[1], (Real)J));
+				P = KannaVector3Add(&P, &KannaVector3Scale(&Ext[2], (Real)K));
+				Corners[Idx++] = P;
+			}
+		}
+	}
 }
 
 // ===========================================================================
@@ -109,12 +261,16 @@ Capsule SabinaCapsuleMake(const Vector3 *Start, const Vector3 *End, Real Radius)
 	return C;
 }
 
+int SabinaCapsuleContains(const Capsule *C, const Vector3 *P) {
+	Vector3 CP = SabinaCapsuleClosestPoint(C, P);
+	Real DistSq = KannaVector3DistanceSq(&CP, P);
+	return DistSq <= C->Radius * C->Radius + REAL_EPSILON;
+}
+
 Vector3 SabinaCapsuleClosestPoint(const Capsule *C, const Vector3 *P) {
-	// Project P onto segment [Start, End], clamp, offset toward P by radius.
-	// Pを線分[Start, End]に投影し、クランプ、P方向に半径分オフセット。
 	Vector3 Axis = KannaVector3Sub(&C->End, &C->Start);
 	Vector3 PToS = KannaVector3Sub(P, &C->Start);
-	Real LenSq = KannaVector3Dot(&Axis, &Axis);
+	Real LenSq = KannaVector3LengthSq(&Axis);
 
 	Real T;
 	if (NagisaIsZero(LenSq)) {
@@ -127,7 +283,6 @@ Vector3 SabinaCapsuleClosestPoint(const Capsule *C, const Vector3 *P) {
 	Vector3 Closest = KannaVector3Scale(&Axis, T);
 	Closest = KannaVector3Add(&C->Start, &Closest);
 
-	// Push toward P by radius.
 	Vector3 ToP = KannaVector3Sub(P, &Closest);
 	Real DistSq = KannaVector3LengthSq(&ToP);
 	if (DistSq > C->Radius * C->Radius && !NagisaIsZero(DistSq)) {
@@ -137,6 +292,14 @@ Vector3 SabinaCapsuleClosestPoint(const Capsule *C, const Vector3 *P) {
 	}
 
 	return Closest;
+}
+
+Real SabinaCapsuleLength(const Capsule *C) {
+	return KannaVector3Distance(&C->Start, &C->End);
+}
+
+Real SabinaCapsuleSegmentLengthSq(const Capsule *C) {
+	return KannaVector3DistanceSq(&C->Start, &C->End);
 }
 
 // ===========================================================================
@@ -162,8 +325,45 @@ Plane SabinaPlaneMakeFromPoints(const Vector3 *A, const Vector3 *B, const Vector
 	return P;
 }
 
+Plane SabinaPlaneNormalize(const Plane *P) {
+	Real Len = KannaVector3Length(&P->Normal);
+	if (NagisaIsZero(Len)) {
+		Plane Z;
+		Z.Normal = KannaVector3Make(0, 1, 0);
+		Z.Distance = 0;
+		return Z;
+	}
+	Real InvLen = 1.0 / Len;
+	Plane N;
+	N.Normal   = KannaVector3Scale(&P->Normal, InvLen);
+	N.Distance = P->Distance * InvLen;
+	return N;
+}
+
 Real SabinaPlaneSignedDistance(const Plane *P, const Vector3 *Point) {
 	return KannaVector3Dot(&P->Normal, Point) - P->Distance;
+}
+
+Real SabinaPlaneDistance(const Plane *P, const Vector3 *Point) {
+	return YuuAbs(SabinaPlaneSignedDistance(P, Point));
+}
+
+Vector3 SabinaPlaneReflect(const Plane *P, const Vector3 *V) {
+	Real D = KannaVector3Dot(&P->Normal, V);
+	Vector3 R;
+	R.Data[0] = V->Data[0] - 2.0 * D * P->Normal.Data[0];
+	R.Data[1] = V->Data[1] - 2.0 * D * P->Normal.Data[1];
+	R.Data[2] = V->Data[2] - 2.0 * D * P->Normal.Data[2];
+	return R;
+}
+
+Vector3 SabinaPlaneProject(const Plane *P, const Vector3 *V) {
+	Real D = KannaVector3Dot(&P->Normal, V);
+	Vector3 R;
+	R.Data[0] = V->Data[0] - D * P->Normal.Data[0];
+	R.Data[1] = V->Data[1] - D * P->Normal.Data[1];
+	R.Data[2] = V->Data[2] - D * P->Normal.Data[2];
+	return R;
 }
 
 // ===========================================================================
@@ -182,11 +382,51 @@ Vector3 SabinaRayPointAt(const Ray *R, Real T) {
 	return KannaVector3Add(&R->Origin, &Offset);
 }
 
-Real SabinaRayClosestPoint(const Ray *R, const Vector3 *P) {
+Real SabinaRayClosestT(const Ray *R, const Vector3 *P) {
 	Vector3 ToP = KannaVector3Sub(P, &R->Origin);
 	Real Dot = KannaVector3Dot(&R->Direction, &ToP);
-	// For a ray (not line), clamp T >= 0.
-	return Dot > REAL_ZERO ? Dot : REAL_ZERO;
+	Real LenSq = KannaVector3LengthSq(&R->Direction);
+	if (NagisaIsZero(LenSq)) return REAL_ZERO;
+	Real T = Dot / LenSq;
+	return T > REAL_ZERO ? T : REAL_ZERO;
+}
+
+Real SabinaRayIntersectPlane(const Ray *R, const Plane *P) {
+	Real Denom = KannaVector3Dot(&R->Direction, &P->Normal);
+	if (NagisaIsZero(Denom)) return -1.0;
+	Real T = (P->Distance - KannaVector3Dot(&R->Origin, &P->Normal)) / Denom;
+	return T >= REAL_ZERO ? T : -1.0;
+}
+
+int SabinaRayIntersectSphere(const Ray *R, const Sphere *S, Real *T0, Real *T1) {
+	return SabinaSphereIntersectRay(S, R, T0, T1);
+}
+
+int SabinaRayIntersectAABB(const Ray *R, const AABB *Box, Real *T0, Real *T1) {
+	return SabinaAABBIntersectRay(Box, R, T0, T1);
+}
+
+int SabinaRayIntersectTriangle(const Ray *R, const Triangle *T, Real *TOut) {
+	// Möller–Trumbore algorithm.
+	// モラー・トランボアアルゴリズムね。
+	Vector3 E1 = KannaVector3Sub(&T->V1, &T->V0);
+	Vector3 E2 = KannaVector3Sub(&T->V2, &T->V0);
+	Vector3 Pv = KannaVector3Cross(&R->Direction, &E2);
+	Real Det = KannaVector3Dot(&E1, &Pv);
+
+	if (NagisaIsZero(Det)) return 0;
+	Real InvDet = 1.0 / Det;
+
+	Vector3 TVec = KannaVector3Sub(&R->Origin, &T->V0);
+	Real U = KannaVector3Dot(&TVec, &Pv) * InvDet;
+	if (U < REAL_ZERO || U > 1.0) return 0;
+
+	Vector3 Qv = KannaVector3Cross(&TVec, &E1);
+	Real V = KannaVector3Dot(&R->Direction, &Qv) * InvDet;
+	if (V < REAL_ZERO || U + V > 1.0) return 0;
+
+	*TOut = KannaVector3Dot(&E2, &Qv) * InvDet;
+	return *TOut >= REAL_ZERO ? 1 : 0;
 }
 
 // ===========================================================================
@@ -201,22 +441,64 @@ Segment SabinaSegmentMake(const Vector3 *Start, const Vector3 *End) {
 }
 
 Real SabinaSegmentLength(const Segment *S) {
-	Vector3 D = KannaVector3Sub(&S->End, &S->Start);
-	return SulettaSqrt(KannaVector3LengthSq(&D));
+	return KannaVector3Distance(&S->Start, &S->End);
+}
+
+Real SabinaSegmentLengthSq(const Segment *S) {
+	return KannaVector3DistanceSq(&S->Start, &S->End);
 }
 
 Vector3 SabinaSegmentClosestPoint(const Segment *S, const Vector3 *P) {
+	Real T = SabinaSegmentClosestT(S, P);
 	Vector3 Axis = KannaVector3Sub(&S->End, &S->Start);
-	Vector3 PToS = KannaVector3Sub(P, &S->Start);
-	Real LenSq = KannaVector3LengthSq(&Axis);
-	Real T = 0.0;
-	if (!NagisaIsZero(LenSq)) {
-		T = KannaVector3Dot(&PToS, &Axis) / LenSq;
-		T = YuuClamp01(T);
-	}
 	Vector3 Closest = KannaVector3Scale(&Axis, T);
 	Closest = KannaVector3Add(&S->Start, &Closest);
 	return Closest;
+}
+
+Real SabinaSegmentClosestT(const Segment *S, const Vector3 *P) {
+	Vector3 Axis = KannaVector3Sub(&S->End, &S->Start);
+	Vector3 PToS = KannaVector3Sub(P, &S->Start);
+	Real LenSq = KannaVector3LengthSq(&Axis);
+	if (NagisaIsZero(LenSq)) return 0.0;
+	Real T = KannaVector3Dot(&PToS, &Axis) / LenSq;
+	return YuuClamp01(T);
+}
+
+Real SabinaSegmentDistanceToPoint(const Segment *S, const Vector3 *P) {
+	Vector3 CP = SabinaSegmentClosestPoint(S, P);
+	return KannaVector3Distance(&CP, P);
+}
+
+Real SabinaSegmentClosestPointBetween(const Segment *S1, const Segment *S2, Vector3 *P1, Vector3 *P2) {
+	Vector3 D1 = KannaVector3Sub(&S1->End, &S1->Start);
+	Vector3 D2 = KannaVector3Sub(&S2->End, &S2->Start);
+	Vector3 R = KannaVector3Sub(&S1->Start, &S2->Start);
+
+	Real A = KannaVector3Dot(&D1, &D1);
+	Real B = KannaVector3Dot(&D1, &D2);
+	Real C = KannaVector3Dot(&D2, &D2);
+	Real D = KannaVector3Dot(&D1, &R);
+	Real E = KannaVector3Dot(&D2, &R);
+
+	Real Det = A * C - B * B;
+	Real S, T;
+
+	if (NagisaIsZero(Det)) {
+		S = 0.0;
+		T = C > REAL_ZERO ? E / C : 0.0;
+	} else {
+		S = (B * E - C * D) / Det;
+		T = (A * E - B * D) / Det;
+	}
+
+	S = YuuClamp01(S);
+	T = YuuClamp01(T);
+
+	*P1 = KannaVector3Add(&S1->Start, &KannaVector3Scale(&D1, S));
+	*P2 = KannaVector3Add(&S2->Start, &KannaVector3Scale(&D2, T));
+
+	return KannaVector3Distance(P1, P2);
 }
 
 // ===========================================================================
@@ -243,4 +525,94 @@ Real SabinaTriangleArea(const Triangle *T) {
 	Vector3 AC = KannaVector3Sub(&T->V2, &T->V0);
 	Vector3 Cr = KannaVector3Cross(&AB, &AC);
 	return 0.5 * SulettaSqrt(KannaVector3LengthSq(&Cr));
+}
+
+Real SabinaTrianglePerimeter(const Triangle *T) {
+	Real A = KannaVector3Distance(&T->V0, &T->V1);
+	Real B = KannaVector3Distance(&T->V1, &T->V2);
+	Real C = KannaVector3Distance(&T->V2, &T->V0);
+	return A + B + C;
+}
+
+Vector3 SabinaTriangleClosestPoint(const Triangle *T, const Vector3 *P) {
+	// Project onto triangle plane, then barycentric clamp.
+	// 三角形平面に投影して、重心座標でクランプするの。
+	Vector3 N = SabinaTriangleNormal(T);
+	Plane TriPlane = SabinaPlaneMake(&N, KannaVector3Dot(&N, &T->V0));
+	Real SD = SabinaPlaneSignedDistance(&TriPlane, P);
+	Vector3 Proj = KannaVector3Sub(P, &KannaVector3Scale(&N, SD));
+
+	// Barycentric coordinates of Proj.
+	Vector3 V0 = T->V0, V1 = T->V1, V2 = T->V2;
+
+	Vector3 V0V1 = KannaVector3Sub(&V1, &V0);
+	Vector3 V0V2 = KannaVector3Sub(&V2, &V0);
+	Vector3 V0P = KannaVector3Sub(&Proj, &V0);
+
+	Real D00 = KannaVector3Dot(&V0V1, &V0V1);
+	Real D01 = KannaVector3Dot(&V0V1, &V0V2);
+	Real D11 = KannaVector3Dot(&V0V2, &V0V2);
+	Real D20 = KannaVector3Dot(&V0P, &V0V1);
+	Real D21 = KannaVector3Dot(&V0P, &V0V2);
+
+	Real Denom = D00 * D11 - D01 * D01;
+	if (NagisaIsZero(Denom)) Denom = 1.0;
+
+	Real V = (D11 * D20 - D01 * D21) / Denom;
+	Real W = (D00 * D21 - D01 * D20) / Denom;
+	Real U = 1.0 - V - W;
+
+	// Clamp to triangle interior.
+	if (U < 0) U = 0;
+	if (V < 0) V = 0;
+	if (W < 0) W = 0;
+	Real Sum = U + V + W;
+	if (Sum > REAL_ZERO) {
+		U /= Sum;
+		V /= Sum;
+		W /= Sum;
+	} else {
+		U = 1.0; V = 0.0; W = 0.0;
+	}
+
+	Vector3 CP;
+	CP.Data[0] = U * V0.Data[0] + V * V1.Data[0] + W * V2.Data[0];
+	CP.Data[1] = U * V0.Data[1] + V * V1.Data[1] + W * V2.Data[1];
+	CP.Data[2] = U * V0.Data[2] + V * V1.Data[2] + W * V2.Data[2];
+	return CP;
+}
+
+void SabinaTriangleBarycentric(const Triangle *T, const Vector3 *P, Real *U, Real *V, Real *W) {
+	Vector3 N = SabinaTriangleNormal(T);
+	Real Area2 = SabinaTriangleArea(T) * 2.0;
+	if (NagisaIsZero(Area2)) {
+		*U = 1.0; *V = 0.0; *W = 0.0;
+		return;
+	}
+
+	Vector3 V0V1 = KannaVector3Sub(&T->V1, &T->V0);
+	Vector3 V1V2 = KannaVector3Sub(&T->V2, &T->V1);
+	Vector3 V2V0 = KannaVector3Sub(&T->V0, &T->V2);
+
+	Vector3 PToV1 = KannaVector3Sub(&T->V1, P);
+	Vector3 PToV2 = KannaVector3Sub(&T->V2, P);
+	Vector3 PToV0 = KannaVector3Sub(&T->V0, P);
+
+	Vector3 C0 = KannaVector3Cross(&V1V2, &PToV1);
+	Vector3 C1 = KannaVector3Cross(&V2V0, &PToV2);
+	Vector3 C2 = KannaVector3Cross(&V0V1, &PToV0);
+
+	*U = KannaVector3Dot(&C0, &N) / Area2;
+	*V = KannaVector3Dot(&C1, &N) / Area2;
+	*W = KannaVector3Dot(&C2, &N) / Area2;
+}
+
+int SabinaTriangleContains(const Triangle *T, const Vector3 *P) {
+	Real U, V, W;
+	SabinaTriangleBarycentric(T, P, &U, &V, &W);
+	return U >= 0.0 && V >= 0.0 && W >= 0.0;
+}
+
+int SabinaTriangleIntersectRay(const Triangle *T, const Ray *R, Real *TOut) {
+	return SabinaRayIntersectTriangle(R, T, TOut);
 }
