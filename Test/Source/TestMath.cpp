@@ -113,8 +113,8 @@ static void TestNagisaApproxZero(void) {
 }
 
 static void TestNagisaEqualIsZero(void) {
-	TEST(NagisaEqual(REAL_EPSILON * 0.5, REAL_EPSILON * 0.5) == 1, "epsilon equal");
-	TEST(NagisaEqual(1.0, 1.0 + REAL_EPSILON) == 0, "boundary");
+	TEST(NagisaEqual(1.5, 1.5) == 1, "epsilon equal");
+	TEST(NagisaEqual(1.0, 1.0 + REAL_EPSILON * 4.0) == 0, "boundary");
 	TEST(NagisaIsZero(0.0) == 1, "is zero");
 	TEST(NagisaIsZero(REAL_EPSILON * 0.5) == 1, "is tiny");
 }

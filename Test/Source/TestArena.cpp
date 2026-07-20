@@ -1,6 +1,6 @@
 /**
- * Arena unit tests — Zero-is-valid contract.
- * アリーナの単体テスト — Zero-is-valid 契約ね。
+ * Arena unit tests.
+ * アリーナの単体テストね。
  *
  * KobayashiAlloc / KobayashiAllocAlign / KobayashiDup NEVER return null.
  * They return &TohruZeroBlock on OOM or invalid input. Callers never
@@ -366,8 +366,8 @@ static void TestZeroBlockFallback(void) {
 // ---------------------------------------------------------------------------
 
 int main(void) {
-	fprintf(stderr, "TohruPhysics Arena Tests (Zero-is-valid)\n");
-	fprintf(stderr, "========================================\n\n");
+	fprintf(stderr, "TohruPhysics Arena Tests\n");
+	fprintf(stderr, "========================\n\n");
 
 	TestTohruInitAndDestroy();
 	TestTohruInitFixed();

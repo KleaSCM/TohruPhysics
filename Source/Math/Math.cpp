@@ -1,10 +1,6 @@
 /**
- * Scalar math implementation — Zero-is-valid throughout.
- * スカラー数学の実装 — 全体がZero-is-validね。
- *
- * NaN/Inf inputs produce 0. Degenerate inputs produce 0.
- * Callers never branch-check results.
- * NaN/Inf入力は0になるの。退化入力も0よ。呼び出し側は結果を分岐チェックしないの。
+ * Scalar math implementation.
+ * スカラー数学の実装ね。
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -155,44 +151,59 @@ int64_t YuuWrap64(int64_t V, int64_t Lo, int64_t Hi) {
 //  範囲縮約多項式による高速三角関数ね。
 // ---------------------------------------------------------------------------
 
-// Reduce V to [-PI, PI] range.
-// Vを[-PI, PI]の範囲に縮約するの。
-static Real RangeReduce(Real V) {
-	if (MaiIsNaN(V)) return REAL_ZERO;
-	if (MaiIsInf(V)) return REAL_ZERO;
-
-	// Shift to [-PI, PI] using remainder.
-	// 剰余を使って[-PI, PI]にシフトするわ。
-	Real N = V / REAL_PI;
-	// Truncate toward zero
-	int64_t K = (int64_t)N;
-	Real R = V - (Real)K * REAL_PI;
-	// Adjust to [-PI/2, PI/2] range for better accuracy
-	// 精度向上のため[-PI/2, PI/2]範囲に調整するの。
-	if (R > REAL_PI_HALF) {
-		R = R - REAL_PI;
-	} else if (R < -REAL_PI_HALF) {
-		R = R + REAL_PI;
-	}
-	return R;
-}
-
-Real SulettaSin(Real V) {
-	Real X = RangeReduce(V);
-	if (MaiIsNaN(X)) return REAL_ZERO;
-
-	// Taylor-like polynomial: sin(x) ≈ x - x^3/6 + x^5/120 - x^7/5040
-	// テイラー級数: sin(x) ≈ x - x^3/6 + x^5/120 - x^7/5040
+// 9th-order sin approximation on [0, PI/2].
+// [0, PI/2]における9次sin近似。
+static Real SinApprox(Real X) {
 	Real X2 = X * X;
 	Real X3 = X * X2;
 	Real X5 = X3 * X2;
 	Real X7 = X5 * X2;
+	Real X9 = X7 * X2;
 
-	Real Result = X - X3 * (1.0 / 6.0)
+	return X - X3 * (1.0 / 6.0)
 		+ X5 * (1.0 / 120.0)
-		- X7 * (1.0 / 5040.0);
+		- X7 * (1.0 / 5040.0)
+		+ X9 * (1.0 / 362880.0);
+}
 
-	return Result;
+Real SulettaSin(Real V) {
+	if (MaiIsNaN(V)) return REAL_ZERO;
+	if (MaiIsInf(V)) return REAL_ZERO;
+
+	// Reduce V to [0, 2*PI) using remainder.
+	// 剰余で[0, 2*PI)に縮約。
+	Real N = V / REAL_2PI;
+	Real KReal;
+	// modf-style: subtract integer part
+	if (N >= 0.0) {
+		KReal = (Real)(int64_t)N;
+	} else {
+		KReal = (Real)(int64_t)(N - 1.0);
+	}
+	Real R = V - KReal * REAL_2PI;
+	// Ensure [0, 2*PI)
+	if (R < 0.0) R += REAL_2PI;
+	if (R >= REAL_2PI) R -= REAL_2PI;
+
+	// Quadrant-based reduction to [0, PI/2].
+	// 象限ベースで[0, PI/2]に縮約。
+	int Sign = 1;
+	if (R < REAL_PI_HALF) {
+		// Q1: [0, PI/2) — sin positive
+	} else if (R < REAL_PI) {
+		// Q2: [PI/2, PI) — sin positive, reflect
+		R = REAL_PI - R;
+	} else if (R < 3.0 * REAL_PI_HALF) {
+		// Q3: [PI, 3*PI/2) — sin negative
+		R = R - REAL_PI;
+		Sign = -1;
+	} else {
+		// Q4: [3*PI/2, 2*PI) — sin negative, reflect
+		R = REAL_2PI - R;
+		Sign = -1;
+	}
+
+	return (Real)Sign * SinApprox(R);
 }
 
 Real SulettaCos(Real V) {
@@ -220,9 +231,9 @@ Real SulettaInvSqrt(Real V) {
 	B.U = 0x5FE6EB50C7B537A9ULL - (B.U >> 1);
 	Real X = B.F;
 
-	// Two Newton iterations.
-	// ニュートン法を2回。
-	for (int I = 0; I < 2; I++) {
+	// Three Newton iterations.
+	// ニュートン法を3回。
+	for (int I = 0; I < 3; I++) {
 		X = X * (1.5 - 0.5 * V * X * X);
 	}
 

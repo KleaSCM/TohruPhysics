@@ -2,14 +2,6 @@
  * Expandable page-aligned bump arena for TohruPhysics.
  * TohruPhysics用の拡張可能なページアラインメントバンプアリーナね。
  *
- * Zero-is-valid: every allocation returns a usable pointer. When the
- * backing map cannot be expanded, the global ZeroBlock stub is returned —
- * callers never null-check. Zeroed memory is always a valid default
- * for every type in the engine.
- * Zero-is-valid: 全ての確保が使えるポインタを返すの。マップ拡張に失敗したら
- * グローバルなZeroBlockスタブを返す——呼び出し側は絶対にnullチェックしないわ。
- * ゼロ埋めメモリは常に全ての型で有効なデフォルト値になるの。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */
@@ -87,8 +79,8 @@ Error TohruArenaInitFixed(Arena *A, void *Buffer, size_t Capacity);
 void TohruArenaDestroy(Arena *A);
 
 /**
- * Kobayashi — allocate bytes. Zero-is-valid: never null.
- * バイト列を確保するの。Zero-is-valid: 絶対にnullにならないわ。
+ * Kobayashi — allocate bytes. Never returns null.
+ * バイト列を確保するの。絶対にnullにならないわ。
  *
  * On OOM returns &TohruZeroBlock. Callers never check for null.
  * OOMのときは&TohruZeroBlockを返すの。呼び出し側はnullチェックしないでね。

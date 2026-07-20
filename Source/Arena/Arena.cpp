@@ -2,11 +2,6 @@
  * Expandable arena backing store — mmap/mremap growth with ZeroBlock fallback.
  * 拡張可能なアリーナのバッキングストア — mmap/mremap で拡張、ZeroBlockフォールバック。
  *
- * Zero-is-valid: KobayashiAlloc/KobayashiAllocAlign never return null.
- * On mremap failure they return &TohruZeroBlock. Callers never check.
- * Zero-is-valid: KobayashiAlloc/KobayashiAllocAlign は絶対にnullを返さないの。
- * mremap が失敗したら &TohruZeroBlock を返すわ。呼び出し側はチェックしないでね。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */
@@ -146,7 +141,7 @@ void *KobayashiAlloc(Arena *A, size_t Size) {
 	}
 
 	if (EnsureSpace(A, Size) != 0) {
-		// Zero-is-valid: return the global stub instead of NULL.
+		// Return the global stub instead of NULL.
 		// 呼び出し側は常に有効なポインタを得るの。
 		return (void *)TohruZeroBlock;
 	}

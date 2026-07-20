@@ -19,7 +19,7 @@ The engine uses **expandable bump arenas** backed by anonymous `mmap`. There are
 | Min alignment | 16 bytes |
 | Zero-invariant | `ElmaArenaClear` zeroes the entire backing store |
 
-### Zero-is-valid contract
+### ZII contract
 
 KobayashiAlloc / KobayashiAllocAlign / KobayashiDup **never return null**. Every
 pointer is always valid and usable. When the arena backing store cannot be
@@ -27,7 +27,7 @@ expanded (system OOM, rlimit), the functions return `&TohruZeroBlock` — a glob
 4 KB page of zeros in `.bss`.
 
 ```cpp
-// Zero-is-valid in practice
+// ZII in practice
 PhysicsBody *Body = KobayashiAlloc(&Arena, sizeof(PhysicsBody));
 // Body is always valid. On exhaustion it points to ZeroBlock.
 ApplyForce(Body, Force);

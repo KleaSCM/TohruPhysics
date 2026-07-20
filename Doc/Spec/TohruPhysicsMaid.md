@@ -53,7 +53,7 @@ Simplicity, minimum code, and readability are optimisation goals only. They must
 
 ---
 
-## 3. Error Handling — Zero-is-valid
+## 3. Error Handling — Zero Is Initialization (ZII)
 
 **Every function returns a usable value. Always. No exceptions.**
 
@@ -71,7 +71,7 @@ PhysicsBody *Body = GetBody(Id);
 if (!Body) { /* error handling */ return; }
 ApplyForce(Body, Force);
 
-// ✅ RIGHT — Zero-is-valid: always a usable pointer
+// ✅ RIGHT — Zero Is Initialization: always a usable pointer
 PhysicsBody *Body = GetBody(Id);
 // Body is valid even for unknown Id — points to zeroed stub.
 ApplyForce(Body, Force);
@@ -82,27 +82,28 @@ ApplyForce(Body, Force);
 ```cpp
 // Math: edge cases return zero
 Vector3 N = Vector3Normalize(ZeroVector3);    // → {0,0,0}  not NaN
-Matrix3 M = Matrix3x3Inverse(SingularMatrix);  // → zero matrix
-float D = Vector3Distance(A, A);               // → 0
+Matrix3 M = Matrix3x3Inverse(SingularMatrix); // → zero matrix
+float D = Vector3Distance(A, A);              // → 0
 
 // Lookup: miss returns zero record
-Body = GetBody(9999);  // → &ZeroBody (mass=0, rest=0, no force)
-Constraint = GetConstraint(9999);  // → &ZeroConstraint
+Body = GetBody(9999);          // → &ZeroBody (mass=0, rest=0, no force)
+Constraint = GetConstraint(9999); // → &ZeroConstraint
 
 // Allocation: OOM returns global stub
-void *P = ArenaAlloc(&A, 1000000);   // → &ZeroBlock on OOM
+void *P = ArenaAlloc(&A, 1000000); // → &ZeroBlock on OOM
 
 // IO: failure returns empty written/read count
 size_t N = FileRead(Buf, Size);  // → 0 on error, not -1
 ```
 
-### Why
+### Why ZII?
 
 - **Zero branches in hot paths** — no mispredictions, no pipeline stalls.
 - **Zero special cases** — the null-deref class of bugs is eliminated entirely.
 - **Zero cognitive load** — callers never ask "can this fail?".
 - **Every type accepts 0** — zero velocity = "stopped", zero mass = "infinite",
   zero transform = "identity", zero record = "not found".
+- **Zero is a valid state, not an error** — design your types so zero is meaningful.
 
 ### Memory for the stub
 
@@ -291,17 +292,17 @@ Linter configs must exactly match this guide (tabs, naming, etc.).
 
 ### Arena lifetime defines object lifetime. Individual objects never own memory.
 
-- **No RAII.** `new`/`delete`, `malloc`/`free`, smart pointers (`unique_ptr`, `shared_ptr`, `Box`, `Rc`, `Arc`) are discouraged or forbidden. Owned raw pointers into arena memory.
+- **No RAII.** `new`/`delete`, `malloc`/`free`, smart pointers (`unique_ptr`, `shared_ptr`, `Box`, `Rc`, `Arc`) are **forbidden**. Owned raw pointers into arena memory.
 - **No per-element lifecycle.** No constructors/destructors per element. Batch allocation and batch teardown only.
 - **Think in groups, not elements.** Arenas batch-allocate; individual allocations are an anti-pattern.
 - **Append-only growth.** Push onto the end. Each arena has a tuned initial capacity to minimise re-growth.
 - **Reuse scratch space.** Hashes, buffers, and temp storage live in reusable slots inside the arena.
-- **Zero is valid** — applies to EVERY type and EVERY function, not just arenas. See §3.
+- **Zero Is Initialization (ZII)** — applies to EVERY type and EVERY function, not just arenas. See §3.
 - **Literally cannot fail.** When the arena is exhausted, return the `ZeroBlock` stub. All callers handle stubs transparently — no `std::optional`, no `Option`, no `Result`, no exceptions, no unwinding.
 - **Minimum code.** No entropy injection, no defensive copies, no work beyond what the operation strictly requires.
 - **Clear on exit.** Zero the entire arena at the end of its lifetime. Reasoning: the `ZeroBlock` is always valid, so clearing restores the invariant.
 
-### Zero-is-valid in practice
+### Zero Is Initialization in practice
 
 ```cpp
 // Zero-is-valid in practice
@@ -320,7 +321,7 @@ int Count = GetContactCount(Manifold);        // 0 on zero manifold
 
 ---
 
-## 14b Zero-is-valid Design Checklist
+## 14b. ZII Design Checklist
 
 Before writing ANY function, verify:
 
@@ -413,16 +414,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0012. Implement memory alignment enforcement metrics to guarantee 64-byte boundaries for SIMD lanes.
 
 #### 1.2 Fixed-Width Foundations & Scalar Math
-- [ ] 0013. Define explicit `Real` scalar precision types mapping to signed `float64_t` or `float32_t`.
-- [ ] 0014. Implement robust numeric sanitization logic to detect and reject `NaN` inputs across all modules.
-- [ ] 0015. Implement robust numeric sanitization logic to detect and reject `Infinity` inputs across all modules.
-- [ ] 0016. Implement defensive bounds verification preventing signed integer tracking overflow in step counters.
-- [ ] 0017. Write safe integer wrapping abstraction functions where explicit modulous behavior is mathematically required.
-- [ ] 0018. Create precision-bounded floating-point comparison routines using strict epsilon thresholds.
-- [ ] 0019. Implement standard trigonometric approximations designed specifically to eliminate library drift.
-- [ ] 0020. Write fast inverse square root implementations adhering strictly to the PascalCase coding standards.
-- [ ] 0021. Implement custom `Real` absolute value evaluations to replace standard library dependencies.
-- [ ] 0022. Write defensive clamping utilities ensuring scalar variables cannot violate physical boundaries.
+- [x] 0013. Define explicit `Real` scalar precision types mapping to signed `float64_t` or `float32_t`.
+- [x] 0014. Implement robust numeric sanitization logic to detect and reject `NaN` inputs across all modules.
+- [x] 0015. Implement robust numeric sanitization logic to detect and reject `Infinity` inputs across all modules.
+- [x] 0016. Implement defensive bounds verification preventing signed integer tracking overflow in step counters.
+- [x] 0017. Write safe integer wrapping abstraction functions where explicit modulous behavior is mathematically required.
+- [x] 0018. Create precision-bounded floating-point comparison routines using strict epsilon thresholds.
+- [x] 0019. Implement standard trigonometric approximations designed specifically to eliminate library drift.
+- [x] 0020. Write fast inverse square root implementations adhering strictly to the PascalCase coding standards.
+- [x] 0021. Implement custom `Real` absolute value evaluations to replace standard library dependencies.
+- [x] 0022. Write defensive clamping utilities ensuring scalar variables cannot violate physical boundaries.
 
 #### 1.3 Linear Algebra & Vector Mathematics
 - [ ] 0023. Implement a primitive `Vector3` contiguous raw data layout structure using pure arrays.

@@ -2,12 +2,6 @@
  * Fixed-width scalar math for TohruPhysics.
  * TohruPhysics用の固定幅スカラー数学ね。
  *
- * Zero-is-valid: every function returns a usable value. NaN/Inf inputs
- * produce 0. Degenerate inputs (zero length, singular) produce 0.
- * Callers never branch-check the result.
- * Zero-is-valid: 全ての関数が使える値を返すの。NaN/Inf入力は0になるわ。
- * 退化した入力（ゼロ長、特異）も0を返すの。呼び出し側は絶対に分岐チェックしないでね。
- *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
  */
@@ -33,8 +27,8 @@ typedef double Real;
 //  Mai — NaN / Inf detection.
 //  NaN/Inf検出ね。
 //
-//  Zero-is-valid: these return 0 or 1. Callers never branch-check.
-//  0か1を返すの。呼び出し側は分岐チェックしないわ。
+//  Returns 0 or 1. Never branches.
+//  0か1を返すの。分岐しないわ。
 // ---------------------------------------------------------------------------
 
 int MaiIsNaN(Real V);
