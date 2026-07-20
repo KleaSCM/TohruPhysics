@@ -14,3 +14,8 @@ add_executable(TestVector3
 	Source/TestVector3.cpp
 )
 target_link_libraries(TestVector3 PRIVATE TohruPhysics)
+
+add_executable(TestMatrix
+	Source/TestMatrix.cpp
+)
+target_link_libraries(TestMatrix PRIVATE TohruPhysics)
