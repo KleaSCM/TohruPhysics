@@ -1,6 +1,31 @@
 /**
- * Array type — contiguous arena-backed collection.
- * 配列型 — アリーナバックアップの連続コレクションよ。
+ * Array — arena-backed contiguous dynamic array.
+ * TohruPhysics用のアリーナバックアップ動的配列よ。
+ *
+ * Generic array stored in an arena. Grows by doubling capacity when
+ * full. Bounds-checked access returns &TohruZeroBlock on OOB / empty.
+ * Never branches — callers always get a valid pointer.
+ *
+ * DESIGN PHILOSOPHY:
+ * Each frame produces transient arrays (contacts, constraints, pairs).
+ * These must be fast to fill (amortised O(1) push), fast to clear (O(1)
+ * length reset), and never allocate from the heap. The arena backing
+ * satisfies all three: push only bumps the length (or triggers a
+ * realloc within the same arena), clear resets length to 0, and the
+ * backing memory is owned by the arena — no malloc/free per frame.
+ *
+ * DATA LAYOUT:
+ * ┌──────┬──────┬──────┬──────┬──────────────────────────────────┐
+ * │ Elem │ Elem │ Elem │ Elem │ ... (Capacity slots total)       │
+ * │  0   │  1   │  2   │  3   │                                  │
+ * └──────┴──────┴──────┴──────┴──────────────────────────────────┘
+ *  Length→│←────────── Capacity ────────────────────────────────→│
+ *
+ * OOB Get returns TohruZeroBlock pointer (no crash, no branch).
+ *
+ * References:
+ * - Standard resizable array pattern (std::vector semantics)
+ * - Arena allocation for frame-temporary data
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -9,74 +34,56 @@
 
 #include <TohruPhysics/Arena.h>
 
-// ---------------------------------------------------------------------------
-//  0053: Array — contiguous arena-backed collection.
-//  連続アリーナバックアップコレクション。
-// ---------------------------------------------------------------------------
 typedef struct {
-	Arena  *MemArena;   // backing arena (may be NULL after init)
-	void   *Data;       // element storage
-	size_t  Length;     // number of elements
-	size_t  Capacity;   // allocated element count
-	size_t  ElemSize;   // bytes per element
+	Arena  *MemArena;
+	void   *Data;
+	size_t  Length;
+	size_t  Capacity;
+	size_t  ElemSize;
 } Array;
 
-// ---------------------------------------------------------------------------
-//  Tilty — Array operations
-// ---------------------------------------------------------------------------
-
-// Lifecycle
 void   TiltyArrayInit(Arena *A, Array *Arr, size_t ElemSize, size_t InitCap);
 void   TiltyArrayDestroy(Array *Arr);
 
-// Bounds-checked access
 void  *TiltyArrayGet(const Array *Arr, size_t Index);
 void   TiltyArraySet(Array *Arr, size_t Index, const void *Elem);
 
-// Push / Pop / Insert / Remove
 void  *TiltyArrayPush(Array *Arr, const void *Elem);
 void  *TiltyArrayPop(Array *Arr);
 void   TiltyArrayInsert(Array *Arr, size_t Index, const void *Elem);
 void   TiltyArrayRemove(Array *Arr, size_t Index);
 void   TiltyArrayRemoveAt(Array *Arr, size_t Index);
 
-// Capacity
 void   TiltyArrayReserve(Array *Arr, size_t NewCap);
 void   TiltyArrayResize(Array *Arr, size_t NewLength);
 void   TiltyArrayShrinkToFit(Array *Arr);
 void   TiltyArrayClear(Array *Arr);
 
-// Front / Back / Data
 void  *TiltyArrayFront(const Array *Arr);
 void  *TiltyArrayBack(const Array *Arr);
 void  *TiltyArrayData(const Array *Arr);
 int    TiltyArrayIsEmpty(const Array *Arr);
 
-// Search
 int    TiltyArraySearch(const Array *Arr, const void *Key,
 		int (*Cmp)(const void *, const void *));
 int    TiltyArrayBinarySearch(const Array *Arr, const void *Key,
 		int (*Cmp)(const void *, const void *));
 
-// Copy
 void   TiltyArrayCopy(Array *Dst, size_t DstStart,
 		const Array *Src, size_t SrcStart, size_t Count);
 
-// Membership test
 int    TiltyArrayContains(const Array *Arr, const void *Key,
 		int (*Cmp)(const void *, const void *));
 
-// Sort (introsort: Quicksort + depth limit -> heapsort)
 void   TiltyArraySort(Array *Arr,
 		int (*Cmp)(const void *, const void *));
 
-// ForEach
 void   TiltyArrayForEach(const Array *Arr,
 		void (*Fn)(void *Elem, void *Ctx), void *Ctx);
 
 // ===========================================================================
-//  0060: Grid2D — flat multi-dimensional grid.
-//  フラット多次元グリッド。
+//  Grid2D — flat multi-dimensional grid
+//  フラット多次元グリッド
 // ===========================================================================
 typedef struct {
 	Array   Backing;

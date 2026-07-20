@@ -1,6 +1,28 @@
 /**
- * Primitive geometric shapes for TohruPhysics.
- * TohruPhysics用の基本幾何形状よ。
+ * Geometry — primitive collision shapes.
+ * TohruPhysics用の基本衝突形状よ。
+ *
+ * Eight primitive types (AABB, Sphere, OBB, Capsule, Plane, Ray, Segment,
+ * Triangle) with construction, containment, closest-point, and ray-intersection
+ * queries. Every shape is zero-initialisable — a zeroed shape is valid.
+ *
+ * DESIGN PHILOSOPHY:
+ * Collision detection operates on geometric primitives, not meshes.
+ * These eight cover the vast majority of real-world physics interactions:
+ * - AABB/Sphere: fast broad-phase culling
+ * - OBB: oriented objects (boxes, crates)
+ * - Capsule: character controllers, ragdoll bones
+ * - Plane: infinite ground planes, triggers
+ * - Ray: line-of-sight, weapon hits, mouse picking
+ * - Segment: cable/wire collision
+ * - Triangle: mesh surface representation
+ *
+ * Each type carries its own query functions rather than a virtual
+ * interface — keeps the library C-compatible and avoids vtable overhead.
+ *
+ * References:
+ * - Real-Time Collision Detection (Christer Ericson)
+ * - Möller–Trumbore ray-triangle intersection algorithm
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -11,60 +33,21 @@
 #include <TohruPhysics/Quaternion.h>
 
 // ---------------------------------------------------------------------------
-//  0073: AABB — axis-aligned bounding box.
+//  Primitive type definitions
+//  基本形状の型定義ね。
 // ---------------------------------------------------------------------------
-typedef struct {
-	Vector3 Min;
-	Vector3 Max;
-} AABB;
 
-//  0074: Sphere
-typedef struct {
-	Vector3 Center;
-	Real    Radius;
-} Sphere;
-
-//  0075: OBB — oriented bounding box.
-typedef struct {
-	Vector3   Center;
-	Vector3   HalfExtents;
-	Quaternion Rotation;
-} OBB;
-
-//  0076: Capsule
-typedef struct {
-	Vector3 Start;
-	Vector3 End;
-	Real    Radius;
-} Capsule;
-
-//  0077: Plane — n·x = d
-typedef struct {
-	Vector3 Normal;
-	Real    Distance;
-} Plane;
-
-//  0078: Ray — origin + direction (unit)
-typedef struct {
-	Vector3 Origin;
-	Vector3 Direction;
-} Ray;
-
-//  0079: Segment
-typedef struct {
-	Vector3 Start;
-	Vector3 End;
-} Segment;
-
-//  0080: Triangle
-typedef struct {
-	Vector3 V0;
-	Vector3 V1;
-	Vector3 V2;
-} Triangle;
+typedef struct { Vector3 Min; Vector3 Max; } AABB;
+typedef struct { Vector3 Center; Real Radius; } Sphere;
+typedef struct { Vector3 Center; Vector3 HalfExtents; Quaternion Rotation; } OBB;
+typedef struct { Vector3 Start; Vector3 End; Real Radius; } Capsule;
+typedef struct { Vector3 Normal; Real Distance; } Plane;
+typedef struct { Vector3 Origin; Vector3 Direction; } Ray;
+typedef struct { Vector3 Start; Vector3 End; } Segment;
+typedef struct { Vector3 V0; Vector3 V1; Vector3 V2; } Triangle;
 
 // ===========================================================================
-//  Sabina — primitive constructors and queries
+//  Sabina — primitive construction and queries
 // ===========================================================================
 
 // ---- AABB ----
@@ -101,7 +84,6 @@ Capsule SabinaCapsuleMake(const Vector3 *Start, const Vector3 *End, Real Radius)
 int     SabinaCapsuleContains(const Capsule *C, const Vector3 *P);
 Vector3 SabinaCapsuleClosestPoint(const Capsule *C, const Vector3 *P);
 Real    SabinaCapsuleLength(const Capsule *C);
-Real    SabinaCapsuleSegmentLengthSq(const Capsule *C);
 
 // ---- Plane ----
 Plane   SabinaPlaneMake(const Vector3 *Normal, Real Distance);

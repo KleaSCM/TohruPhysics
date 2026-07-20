@@ -56,3 +56,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	Geometry/Geometry.cpp
 )
+
+# BodyState subsystem
+target_sources(TohruPhysics PRIVATE
+	BodyState/BodyState.cpp
+)

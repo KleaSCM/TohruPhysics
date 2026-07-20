@@ -574,13 +574,13 @@ Defensive Programming --> Performance --> Safety
 - [x] 0090. Build static allocation checks to confirm no dynamic heap interactions creep into hot paths.
 
 #### 1.11 Core Physical State Definitions
-- [ ] 0091. Implement a `RigidBodyState` tracking configuration containing positions, linear velocities, and forces.
-- [ ] 0092. Implement rotational mass components tracking angular velocities, torques, and orientation settings.
-- [ ] 0093. Implement `MassProperties` layout models defining scalar total weights and center positions.
-- [ ] 0094. Implement inverse inertia tensor matrices tracking structural rotational resistance distributions.
-- [ ] 0095. Implement structural property state models managing coefficient metrics for elastic bouncing.
-- [ ] 0096. Implement structural property state models managing friction coefficients across surface types.
-- [ ] 0097. Write kinematic body configuration metrics bypassing standard force resolution fields.
+- [x] 0091. Implement a `RigidBodyState` tracking configuration containing positions, linear velocities, and forces.
+- [x] 0092. Implement rotational mass components tracking angular velocities, torques, and orientation settings.
+- [x] 0093. Implement `MassProperties` layout models defining scalar total weights and center positions.
+- [x] 0094. Implement inverse inertia tensor matrices tracking structural rotational resistance distributions.
+- [x] 0095. Implement structural property state models managing coefficient metrics for elastic bouncing.
+- [x] 0096. Implement structural property state models managing friction coefficients across surface types.
+- [x] 0097. Write kinematic body configuration metrics bypassing standard force resolution fields.
 - [ ] 0098. Implement active body state sleeping variables tracking low-energy systems defensively.
 - [ ] 0099. Implement external gravitational field configuration maps handling constant force metrics.
 - [ ] 0100. Write linear damping equations to control unchecked velocity increases over prolonged execution.

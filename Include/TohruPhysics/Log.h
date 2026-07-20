@@ -1,9 +1,33 @@
 /**
- * Custom logging for TohruPhysics — no stdio I/O locking.
+ * Log — custom logging without stdio locking.
  * TohruPhysics用のカスタムロギング — stdioのI/Oロックを使わないの。
  *
- * Uses write() syscall + vsnprintf for formatting. No fprintf, no stdio locks.
- * write()システムコール＋vsnprintfを使うの。fprintfは使わず、stdioロックもなしよ。
+ * Formats messages via vsnprintf, writes to an fd via write(2).
+ * Bypasses stdio's internal locking (fprintf, fwrite) for signal-safe
+ * and lock-free logging from any thread.
+ *
+ * DESIGN PHILOSOPHY:
+ * stdio (fprintf/fwrite) acquires internal locks that can deadlock if a
+ * signal handler or interrupt callback tries to log. By writing directly
+ * to the fd with write(2) + vsnprintf, we get atomic writes with no
+ * lock acquisition. This is the same approach used by production
+ * game engines (internal crash loggers, telemetry pipelines).
+ *
+ * LOG LEVELS (ascending verbosity):
+ * ┌──────────┬──────┬──────────────────────────────────────────┐
+ * │ Level    │ Val  │ Purpose                                  │
+ * ├──────────┼──────┼──────────────────────────────────────────┤
+ * │ Error    │ 0    │ Fatal: engine cannot continue             │
+ * │ Warn     │ 1    │ Recoverable: degraded behaviour           │
+ * │ Info     │ 2    │ Normal: frame rate, body count            │
+ * │ Debug    │ 3    │ Verbose: per-contact/constraint           │
+ * └──────────┴──────┴──────────────────────────────────────────┘
+ *
+ * Messages above the configured level are discarded (no format cost).
+ *
+ * References:
+ * - write(2) vs fprintf(3) locking behaviour
+ * - vsnprintf(3) for bounded formatting
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -12,10 +36,6 @@
 
 #include <stddef.h>
 
-// ---------------------------------------------------------------------------
-//  0072: LogLevel — severity.
-//  ログレベル — 重大度。
-// ---------------------------------------------------------------------------
 typedef enum {
 	LogLevel_Error = 0,
 	LogLevel_Warn,
@@ -24,22 +44,12 @@ typedef enum {
 	LogLevel_Count
 } LogLevel;
 
-// ---------------------------------------------------------------------------
-//  Configuration
-// ---------------------------------------------------------------------------
 void     TohruLogSetLevel(LogLevel Level);
 LogLevel TohruLogGetLevel(void);
-void     TohruLogSetOutputFD(int FD);   // default: 2 (stderr)
+void     TohruLogSetOutputFD(int FD);
 
-// ---------------------------------------------------------------------------
-//  0072: Core write — formats and writes to the output FD.
-//  書式化して出力FDに書き込むの。
-// ---------------------------------------------------------------------------
 void TohruLogWrite(LogLevel Level, const char *File, int Line, const char *Fmt, ...);
 
-// ---------------------------------------------------------------------------
-//  Convenience macros
-// ---------------------------------------------------------------------------
 #define TohruLogError(Fmt, ...)   TohruLogWrite(LogLevel_Error, __FILE__, __LINE__, Fmt, ##__VA_ARGS__)
 #define TohruLogWarn(Fmt, ...)    TohruLogWrite(LogLevel_Warn,  __FILE__, __LINE__, Fmt, ##__VA_ARGS__)
 #define TohruLogInfo(Fmt, ...)    TohruLogWrite(LogLevel_Info,  __FILE__, __LINE__, Fmt, ##__VA_ARGS__)

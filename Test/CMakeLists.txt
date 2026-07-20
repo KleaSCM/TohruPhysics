@@ -49,3 +49,8 @@ add_executable(TestGeometry
 	Source/TestGeometry.cpp
 )
 target_link_libraries(TestGeometry PRIVATE TohruPhysics)
+
+add_executable(TestBodyState
+	Source/TestBodyState.cpp
+)
+target_link_libraries(TestBodyState PRIVATE TohruPhysics)
