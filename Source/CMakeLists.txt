@@ -31,3 +31,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	Quaternion/Quaternion.cpp
 )
+
+# Array subsystem
+target_sources(TohruPhysics PRIVATE
+	Array/Array.cpp
+)

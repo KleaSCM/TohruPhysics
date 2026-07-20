@@ -24,3 +24,8 @@ add_executable(TestQuaternion
 	Source/TestQuaternion.cpp
 )
 target_link_libraries(TestQuaternion PRIVATE TohruPhysics)
+
+add_executable(TestArray
+	Source/TestArray.cpp
+)
+target_link_libraries(TestArray PRIVATE TohruPhysics)
