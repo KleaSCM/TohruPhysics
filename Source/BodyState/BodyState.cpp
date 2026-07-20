@@ -141,24 +141,42 @@ Matrix3x3 YuiInertiaComputeSphere(Real Mass, Real Radius) {
 Matrix3x3 YuiInertiaComputeCapsule(Real Mass, Real Radius, Real HalfHeight) {
 	// Capsule = cylinder + two hemispherical caps
 	// カプセル = 円柱 + 半球キャップ2個
-	Real H = HalfHeight * 2.0; // full cylinder height
-	Real CylMass = Mass * H / (H + 2.0 * HalfHeight);  // approximate
-	Real CapMass = (Mass - CylMass) * 0.5;
+	Real H = HalfHeight * 2.0; // cylinder height (not including caps)
+	Real R = Radius;
 
-	// Cylinder Ixx = Izz = m * (3*r² + h²) / 12,  Iyy = m * r² / 2
-	Real CylIxx = CylMass * (3.0 * Radius * Radius + H * H) / 12.0;
-	Real CylIyy = CylMass * Radius * Radius * 0.5;
+	// Volume-based mass distribution
+	// 体積ベースの質量分配
+	Real Vcyl = REAL_PI * R * R * H;
+	Real Vcap = (4.0 / 3.0) * REAL_PI * R * R * R;
+	Real Vtot = Vcyl + Vcap;
+	if (NagisaIsZero(Vtot)) {
+		return YuiInertiaTensorZero().InverseInertiaLocal;
+	}
+	Real CylMass = Mass * Vcyl / Vtot;
+	Real CapMass = Mass * Vcap / Vtot * 0.5; // per cap
 
-	// Each hemispherical cap (parallel axis theorem from center):
-	// Ixx_cap = m * (2*r²/5 + h²/4 + 3*h*r/8)
-	// For half-height h (= HalfHeight from center to cap center):
-	Real Hc = HalfHeight;
-	Real CapIxx = CapMass * (0.4 * Radius * Radius + 0.25 * Hc * Hc + 0.375 * Hc * Radius);
-	Real CapIyy = CapMass * (0.4 * Radius * Radius);
+	// Cylinder body inertia at capsule center (Y-axis symmetry)
+	// カプセル中心での円柱慣性（Y軸対称）
+	Real CylIxx = CylMass * (3.0 * R * R + H * H) / 12.0;
+	Real CylIyy = CylMass * R * R * 0.5;
+
+	// Hemispherical cap inertia about its own center of mass
+	// 半球キャップの重心周りの慣性
+	Real CapIxxLocal = CapMass * (83.0 / 320.0) * R * R;
+	Real CapIyyLocal = CapMass * 0.4 * R * R;
+
+	// Cap center of mass offset from capsule center = HalfHeight + 3R/8
+	// キャップ重心のカプセル中心からのオフセット
+	Real D = HalfHeight + 0.375 * R;
+
+	// Parallel axis theorem: I = I_cm + m * d²
+	// 平行軸の定理: I = I_cm + m * d²
+	Real CapIxx = CapIxxLocal + CapMass * D * D;
+	Real CapIyy = CapIyyLocal; // Iyy doesn't change with translation along Y
 
 	Real TotalIxx = CylIxx + 2.0 * CapIxx;
 	Real TotalIyy = CylIyy + 2.0 * CapIyy;
-	Real TotalIzz = TotalIxx; // rotational symmetry about Y
+	Real TotalIzz = TotalIxx;
 
 	Real InvIxx = NagisaIsZero(TotalIxx) ? REAL_ZERO : 1.0 / TotalIxx;
 	Real InvIyy = NagisaIsZero(TotalIyy) ? REAL_ZERO : 1.0 / TotalIyy;

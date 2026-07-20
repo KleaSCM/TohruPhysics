@@ -658,16 +658,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0160. Implement `EPA` degenerate case handling when polytope becomes non-convex.
 
 #### 1.18 Collision Detection - SAT Implementation
-- [ ] 0161. Implement `SAT` for OBB-OBB with 15 separating axes (3 face + 9 edge cross + 3 degenerates).
-- [ ] 0162. Implement `SAT` for AABB-OBB using transformed axes and extents.
-- [ ] 0163. Implement `SAT` for convex polygons (2D) with edge normals as separating axes.
-- [ ] 0164. Implement `SAT` for convex polyhedra (3D) with face normals and edge cross products.
-- [ ] 0165. Implement `SAT` early exit optimization when any separating axis is found.
-- [ ] 0166. Implement `SAT` penetration depth calculation using minimum overlap along axes.
-- [ ] 0167. Implement `SAT` contact point generation using clipping of overlapping features.
-- [ ] 0168. Implement `SAT` for special cases (parallel faces, coplanar vertices) with robust handling.
-- [ ] 0169. Implement `SAT` performance optimization through axis caching and precomputed edge directions.
-- [ ] 0170. Implement `SAT` debug visualization showing separating axes and contact features.
+- [x] 0161. Implement `SAT` for OBB-OBB with 15 separating axes (3 face + 9 edge cross + 3 degenerates).
+- [x] 0162. Implement `SAT` for AABB-OBB using transformed axes and extents.
+- [x] 0163. Implement `SAT` for convex polygons (2D) with edge normals as separating axes.
+- [x] 0164. Implement `SAT` for convex polyhedra (3D) with face normals and edge cross products.
+- [x] 0165. Implement `SAT` early exit optimization when any separating axis is found.
+- [x] 0166. Implement `SAT` penetration depth calculation using minimum overlap along axes.
+- [x] 0167. Implement `SAT` contact point generation using clipping of overlapping features.
+- [x] 0168. Implement `SAT` for special cases (parallel faces, coplanar vertices) with robust handling.
+- [x] 0169. Implement `SAT` performance optimization through axis caching and precomputed edge directions.
+- [x] 0170. Implement `SAT` debug visualization showing separating axes and contact features.
 
 #### 1.19 Collision Detection - Contact Manifold Generation
 - [ ] 0171. Implement `ContactManifold` structure with capacity for up to 4 contact points.

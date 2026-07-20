@@ -403,21 +403,60 @@ Real SulettaPow(Real Base, Real Exp) {
 	if (MaiIsNaN(Base) || MaiIsNaN(Exp)) return REAL_ZERO;
 	if (NagisaIsZero(Base)) return REAL_ZERO;
 	if (NagisaIsZero(Exp)) return 1.0;
+	if (Base < REAL_ZERO) return REAL_ZERO; // negative base not supported
 
-	// Base > 0: use exp(exp * ln(base))
-	// Base > 0: exp(exp * ln(base)) を使う
-	// This is a rough approximation using the fact that bs > 0.
-	// 大まかな近似ね。
-	// For now just do naive multiplication for integer exponents.
-	int64_t N = (int64_t)Exp;
-	Real Result = 1.0;
-	int NegExp = N < 0 ? 1 : 0;
-	if (NegExp) N = -N;
-	for (int64_t I = 0; I < N; I++) {
-		Result *= Base;
+	// For integer exponents, use fast exponentiation
+	// 整数指数の場合は高速累乗を使うの
+	if (NagisaApproxEqual(Exp, (Real)(int64_t)Exp, 1e-12)) {
+		int64_t N = (int64_t)Exp;
+		if (N < 0) {
+			Base = 1.0 / Base;
+			N = -N;
+		}
+		Real Result = 1.0;
+		Real Pow = Base;
+		while (N > 0) {
+			if (N & 1) Result *= Pow;
+			Pow *= Pow;
+			N >>= 1;
+		}
+		return Result;
 	}
-	if (NegExp && !NagisaIsZero(Result)) {
-		Result = 1.0 / Result;
+
+	// For fractional exponents: pow(b, e) = exp(e * ln(b))
+	// 小数指数の場合: pow(b, e) = exp(e * ln(b))
+	// ln(b) via range reduction: b = m * 2^k, ln(b) = ln(m) + k*ln(2)
+	int K = 0;
+	Real M = Base;
+	while (M >= 2.0) { M *= 0.5; K++; }
+	while (M < 0.5) { M *= 2.0; K--; }
+
+	// ln(m) via series: ln(m) = 2*sum(y^(2n+1)/(2n+1)) where y = (m-1)/(m+1)
+	// ln(m)の級数: mが1に近いので速く収束する
+	Real Y = (M - 1.0) / (M + 1.0);
+	Real Y2 = Y * Y;
+	Real LnM = 0.0;
+	Real Term = Y;
+	for (int N = 0; N < 7; N++) {
+		LnM += Term / (Real)(2 * N + 1);
+		Term *= Y2;
+	}
+	Real LnB = LnM + (Real)K * 0.6931471805599453; // + k*ln(2)
+
+	Real X = Exp * LnB;
+
+	// exp(x) via Taylor: sum(x^n/n!)
+	// exp(x)のテイラー展開: 収束が速いわ
+	Real Result = 1.0;
+	Real XTerm = 1.0;
+	Real Factorial = 1.0;
+	for (int N = 1; N < 16; N++) {
+		XTerm *= X;
+		Factorial *= (Real)N;
+		Real T = XTerm / Factorial;
+		Result += T;
+		// Stop when term is negligible
+		if (YuuAbs(T) < 1e-15) break;
 	}
 	return Result;
 }

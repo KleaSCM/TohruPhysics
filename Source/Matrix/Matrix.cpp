@@ -502,17 +502,27 @@ void AnisphiaMatrix4x4Decompose(const Matrix4x4 *M, Vector3 *T, Quaternion *R, V
 	T->Data[1] = M->Data[13];
 	T->Data[2] = M->Data[14];
 
-	// Scale = length of each column's upper 3x3.
-	// スケール = 各列の3x3上部分の長さ。
+	// Extract scale from column lengths of upper 3x3
+	// 上3x3の列の長さからスケールを抽出するの
 	Real Sx = SulettaSqrt(M->Data[0] * M->Data[0] + M->Data[1] * M->Data[1] + M->Data[2] * M->Data[2]);
 	Real Sy = SulettaSqrt(M->Data[4] * M->Data[4] + M->Data[5] * M->Data[5] + M->Data[6] * M->Data[6]);
 	Real Sz = SulettaSqrt(M->Data[8] * M->Data[8] + M->Data[9] * M->Data[9] + M->Data[10] * M->Data[10]);
+
+	// Detect reflection (negative scale) via determinant sign
+	// 行列式の符号で反転（負のスケール）を検出
+	Real Det = M->Data[0] * (M->Data[5] * M->Data[10] - M->Data[6] * M->Data[9])
+	         - M->Data[4] * (M->Data[1] * M->Data[10] - M->Data[2] * M->Data[9])
+	         + M->Data[8] * (M->Data[1] * M->Data[6] - M->Data[2] * M->Data[5]);
+	if (Det < REAL_ZERO) {
+		Sx = -Sx;
+	}
+
 	S->Data[0] = Sx;
 	S->Data[1] = Sy;
 	S->Data[2] = Sz;
 
-	// Normalize columns to extract rotation matrix.
-	// 列を正規化して回転行列を取り出す。
+	// Normalize columns to extract rotation
+	// 列を正規化して回転を抽出
 	if (!NagisaIsZero(Sx) && !NagisaIsZero(Sy) && !NagisaIsZero(Sz)) {
 		Real InvSx = 1.0 / Sx;
 		Real InvSy = 1.0 / Sy;

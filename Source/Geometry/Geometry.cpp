@@ -849,47 +849,80 @@ int IntersectRayPlane(const Ray *R, const Plane *P, Real *TOut) {
 	return T >= REAL_ZERO ? 1 : 0;
 }
 
-// 0115
-int IntersectRayCapsule(const Ray *R, const Capsule *C, Real *T0, Real *T1) {
-	// Test ray against capsule as ray vs infinite cylinder + two hemispheres.
-	// Simplified: capsule is treated as ray vs thick segment.
-	// Since the spec mostly calls for detection, we use distance-based approach:
-	// find closest point on ray to capsule segment, check if within radius.
+// 0115 — proper ray-capsule intersection
+int IntersectRayCapsule(const Ray *R, const Capsule *Cap, Real *T0, Real *T1) {
 	*T0 = -1.0; *T1 = -1.0;
 
-	// Closest point on ray to capsule segment axis.
-	// レイ上のカプセルセグメントに最も近い点を求めるの。
-	Vector3 Axis = KannaVector3Sub(&C->End, &C->Start);
-	Vector3 RayOrgToSeg = KannaVector3Sub(&R->Origin, &C->Start);
-	Real AxisLenSq = KannaVector3LengthSq(&Axis);
-	if (NagisaIsZero(AxisLenSq)) {
-		// Degenerate capsule → sphere test
-		Sphere S = SabinaSphereMake(&C->Start, C->Radius);
-		return SabinaSphereIntersectRay(&S, R, T0, T1);
+	Vector3 V = KannaVector3Sub(&Cap->End, &Cap->Start);
+	Real VLenSq = KannaVector3LengthSq(&V);
+	if (NagisaIsZero(VLenSq)) {
+		Sphere TempS = SabinaSphereMake(&Cap->Start, Cap->Radius);
+		return SabinaSphereIntersectRay(&TempS, R, T0, T1);
+	}
+	Real VLenInv = 1.0 / SulettaSqrt(VLenSq);
+
+	Vector3 VHat = KannaVector3Scale(&V, VLenInv);
+
+	Vector3 W0 = KannaVector3Sub(&R->Origin, &Cap->Start);
+
+	Vector3 DV = KannaVector3Cross(&R->Direction, &VHat);
+	Vector3 W0V = KannaVector3Cross(&W0, &VHat);
+	Real W0VLenSq = KannaVector3LengthSq(&W0V);
+
+	Real AA = KannaVector3LengthSq(&DV);
+	Real BB = 2.0 * KannaVector3Dot(&DV, &W0V);
+	Real CC = W0VLenSq - Cap->Radius * Cap->Radius;
+
+	int Hit = 0;
+	Real TMin = 1e30;
+	Real TMax = -1e30;
+
+	if (NagisaIsZero(AA)) {
+		if (CC > REAL_ZERO) return 0;
+		Real HalfChord = SulettaSqrt(-CC);
+		TMin = -HalfChord; TMax = HalfChord;
+		Hit = 1;
+	} else {
+		Real Disc = BB * BB - 4.0 * AA * CC;
+		if (Disc < REAL_ZERO) return 0;
+		Real SqrtDisc = SulettaSqrt(Disc);
+		Real Inv2A = 1.0 / (2.0 * AA);
+		Real L1 = (-BB - SqrtDisc) * Inv2A;
+		Real L2 = (-BB + SqrtDisc) * Inv2A;
+		if (L1 > L2) { Real Tmp = L1; L1 = L2; L2 = Tmp; }
+
+		for (int I = 0; I < 2; I++) {
+			Real L = (I == 0) ? L1 : L2;
+			Real TV = KannaVector3Dot(&V, &W0) + L * KannaVector3Dot(&V, &R->Direction);
+			Real T = TV / VLenSq;
+			if (T >= 0.0 && T <= 1.0) {
+				if (L < TMin) TMin = L;
+				if (L > TMax) TMax = L;
+				Hit = 1;
+			}
+		}
 	}
 
-	// Project ray origin onto capsule axis
-	Real T = KannaVector3Dot(&RayOrgToSeg, &Axis) / AxisLenSq;
-	T = YuuClamp01(T);
-	Vector3 AxisScale = KannaVector3Scale(&Axis, T);
-	Vector3 ClosestAxisPt = KannaVector3Add(&C->Start, &AxisScale);
+	// Hemispherical end caps
+	Sphere StartCap = SabinaSphereMake(&Cap->Start, Cap->Radius);
+	Sphere EndCap   = SabinaSphereMake(&Cap->End, Cap->Radius);
+	Real S0, S1;
+	if (SabinaSphereIntersectRay(&StartCap, R, &S0, &S1)) {
+		if (S0 < TMin) TMin = S0;
+		if (S1 > TMax) TMax = S1;
+		Hit = 1;
+	}
+	if (SabinaSphereIntersectRay(&EndCap, R, &S0, &S1)) {
+		if (S0 < TMin) TMin = S0;
+		if (S1 > TMax) TMax = S1;
+		Hit = 1;
+	}
 
-	// Ray to closest capsule point
-	Vector3 V = KannaVector3Sub(&ClosestAxisPt, &R->Origin);
-	Real VDotD = KannaVector3Dot(&V, &R->Direction);
-	Real DirLenSq = KannaVector3LengthSq(&R->Direction);
-	if (NagisaIsZero(DirLenSq)) return 0;
-
-	Real RayT = VDotD / DirLenSq;
-	Vector3 DirScale = KannaVector3Scale(&R->Direction, RayT);
-	Vector3 ClosestRayPt = KannaVector3Add(&R->Origin, &DirScale);
-	Real DistSq = KannaVector3DistanceSq(&ClosestRayPt, &ClosestAxisPt);
-
-	if (DistSq > C->Radius * C->Radius) return 0;
-
-	// Simple hit approximation
-	*T0 = RayT > REAL_ZERO ? RayT : REAL_ZERO;
-	*T1 = RayT;
+	if (!Hit) return 0;
+	if (TMax < REAL_ZERO) return 0;
+	if (TMin < REAL_ZERO) TMin = REAL_ZERO;
+	*T0 = TMin;
+	*T1 = TMax;
 	return 1;
 }
 

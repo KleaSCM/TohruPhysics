@@ -66,3 +66,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	GJK/GJK.cpp
 )
+
+# SAT subsystem
+target_sources(TohruPhysics PRIVATE
+	SAT/SAT.cpp
+)

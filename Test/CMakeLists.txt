@@ -59,3 +59,8 @@ add_executable(TestGJK
 	Source/TestGJK.cpp
 )
 target_link_libraries(TestGJK PRIVATE TohruPhysics)
+
+add_executable(TestSAT
+	Source/TestSAT.cpp
+)
+target_link_libraries(TestSAT PRIVATE TohruPhysics)
