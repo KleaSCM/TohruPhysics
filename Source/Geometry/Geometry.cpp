@@ -1106,3 +1106,219 @@ Real DistanceOBBOBB(const OBB *A, const OBB *B) {
 	// Overlapping — return negative penetration depth
 	return -MaxPen;
 }
+
+// ===========================================================================
+//  1.15 Support functions
+// ===========================================================================
+
+// 0131
+Vector3 SupportSphere(const Sphere *S, const Vector3 *Dir) {
+	Real Len = KannaVector3Length(Dir);
+	if (NagisaIsZero(Len)) return S->Center;
+	Vector3 N = KannaVector3Scale(Dir, 1.0 / Len);
+	Vector3 Radial = KannaVector3Scale(&N, S->Radius);
+	return KannaVector3Add(&S->Center, &Radial);
+}
+
+// 0132
+Vector3 SupportAABB(const AABB *Box, const Vector3 *Dir) {
+	Vector3 P;
+	P.Data[0] = Dir->Data[0] >= REAL_ZERO ? Box->Max.Data[0] : Box->Min.Data[0];
+	P.Data[1] = Dir->Data[1] >= REAL_ZERO ? Box->Max.Data[1] : Box->Min.Data[1];
+	P.Data[2] = Dir->Data[2] >= REAL_ZERO ? Box->Max.Data[2] : Box->Min.Data[2];
+	return P;
+}
+
+// 0133
+Vector3 SupportOBB(const OBB *Box, const Vector3 *Dir) {
+	Quaternion Conj = EuphylliaQuaternionConjugate(&Box->Rotation);
+	Vector3 LocalDir = EuphylliaQuaternionRotateVector(&Conj, Dir);
+	Vector3 LocalP;
+	LocalP.Data[0] = LocalDir.Data[0] >= REAL_ZERO ? Box->HalfExtents.Data[0] : -Box->HalfExtents.Data[0];
+	LocalP.Data[1] = LocalDir.Data[1] >= REAL_ZERO ? Box->HalfExtents.Data[1] : -Box->HalfExtents.Data[1];
+	LocalP.Data[2] = LocalDir.Data[2] >= REAL_ZERO ? Box->HalfExtents.Data[2] : -Box->HalfExtents.Data[2];
+	Vector3 WorldP = EuphylliaQuaternionRotateVector(&Box->Rotation, &LocalP);
+	return KannaVector3Add(&Box->Center, &WorldP);
+}
+
+// 0134
+Vector3 SupportCapsule(const Capsule *C, const Vector3 *Dir) {
+	Real Len = KannaVector3Length(Dir);
+	if (NagisaIsZero(Len)) return KannaVector3Midpoint(&C->Start, &C->End);
+
+	Vector3 N = KannaVector3Scale(Dir, 1.0 / Len);
+
+	// Project direction onto capsule axis to find which end to pick
+	Vector3 Axis = KannaVector3Sub(&C->End, &C->Start);
+	Real AxisLen = KannaVector3Length(&Axis);
+	if (NagisaIsZero(AxisLen)) {
+		// Degenerate → sphere
+		Sphere S = SabinaSphereMake(&C->Start, C->Radius);
+		return SupportSphere(&S, Dir);
+	}
+
+	Real AxisDotDir = KannaVector3Dot(&Axis, &N);
+	Vector3 EndPt = AxisDotDir >= REAL_ZERO ? C->End : C->Start;
+	Vector3 RadialCap = KannaVector3Scale(&N, C->Radius);
+	return KannaVector3Add(&EndPt, &RadialCap);
+}
+
+// 0135
+Vector3 SupportConvexHull(const ConvexHull *Hull, const Vector3 *Dir) {
+	if (Hull->VertexCount <= 0) return KannaVector3Zero();
+	Real MaxDot = KannaVector3Dot(Dir, &Hull->Vertices[0]);
+	int MaxIdx = 0;
+	for (int I = 1; I < Hull->VertexCount; I++) {
+		Real D = KannaVector3Dot(Dir, &Hull->Vertices[I]);
+		if (D > MaxDot) { MaxDot = D; MaxIdx = I; }
+	}
+	return Hull->Vertices[MaxIdx];
+}
+
+// 0136
+Vector3 SupportTriangleMesh(const Triangle *Triangles, int TriCount, const Vector3 *Dir) {
+	if (TriCount <= 0) return KannaVector3Zero();
+	Vector3 Zero = KannaVector3Zero();
+	Vector3 Best = SabinaTriangleClosestPoint(&Triangles[0], &Zero);
+	// For a support function, test triangle vertices plus edge extrusions
+	Real MaxDot = KannaVector3Dot(Dir, &Best);
+	for (int I = 0; I < TriCount; I++) {
+		const Triangle *T = &Triangles[I];
+		Vector3 Verts[3] = {T->V0, T->V1, T->V2};
+		for (int J = 0; J < 3; J++) {
+			Real D = KannaVector3Dot(Dir, &Verts[J]);
+			if (D > MaxDot) { MaxDot = D; Best = Verts[J]; }
+		}
+	}
+	return Best;
+}
+
+// 0137
+Vector3 SupportCompoundShape(const void **Shapes, const int *Types, int Count, const Vector3 *Dir) {
+	if (Count <= 0) return KannaVector3Zero();
+	Vector3 Best = KannaVector3Zero();
+	Real MaxDot = -1e30;
+	for (int I = 0; I < Count; I++) {
+		Vector3 P = KannaVector3Zero();
+		switch (Types[I]) {
+		case 0: { // Sphere
+			const Sphere *S = (const Sphere *)Shapes[I];
+			P = SupportSphere(S, Dir);
+			break;
+		}
+		case 1: { // AABB
+			const AABB *B = (const AABB *)Shapes[I];
+			P = SupportAABB(B, Dir);
+			break;
+		}
+		case 2: { // OBB
+			const OBB *O = (const OBB *)Shapes[I];
+			P = SupportOBB(O, Dir);
+			break;
+		}
+		case 3: { // Capsule
+			const Capsule *C = (const Capsule *)Shapes[I];
+			P = SupportCapsule(C, Dir);
+			break;
+		}
+		case 4: { // Cylinder
+			const Cylinder *Cy = (const Cylinder *)Shapes[I];
+			P = SupportCylinder(Cy, Dir);
+			break;
+		}
+		case 5: { // Cone
+			const Cone *Co = (const Cone *)Shapes[I];
+			P = SupportCone(Co, Dir);
+			break;
+		}
+		default: break;
+		}
+		Real D = KannaVector3Dot(Dir, &P);
+		if (D > MaxDot) { MaxDot = D; Best = P; }
+	}
+	return Best;
+}
+
+// 0138
+Vector3 SupportHeightField(const Real *Heights, int Width, int Depth, const Vector3 *Dir) {
+	if (Width <= 0 || Depth <= 0) return KannaVector3Zero();
+	// Find the height cell that best aligns with direction
+	Real BestDot = -1e30;
+	int BestX = 0, BestZ = 0;
+	for (int Z = 0; Z < Depth; Z++) {
+		for (int X = 0; X < Width; X++) {
+			Vector3 P = KannaVector3Make((Real)X, Heights[Z * Width + X], (Real)Z);
+			Real D = KannaVector3Dot(Dir, &P);
+			if (D > BestDot) { BestDot = D; BestX = X; BestZ = Z; }
+		}
+	}
+	return KannaVector3Make((Real)BestX, Heights[BestZ * Width + BestX], (Real)BestZ);
+}
+
+// 0139
+Vector3 SupportCylinder(const Cylinder *C, const Vector3 *Dir) {
+	Real Len = KannaVector3Length(Dir);
+	if (NagisaIsZero(Len)) return C->Center;
+
+	Vector3 N = KannaVector3Scale(Dir, 1.0 / Len);
+	// Cylinder axis is Y in local space
+	Real HeightExtent = C->HalfHeight;
+	Real YVal = N.Data[1] >= REAL_ZERO ? HeightExtent : -HeightExtent;
+
+	// Radial extent in XZ plane
+	Real RadialDot = SulettaSqrt(N.Data[0] * N.Data[0] + N.Data[2] * N.Data[2]);
+	if (NagisaIsZero(RadialDot)) {
+		return KannaVector3Make(C->Center.Data[0], C->Center.Data[1] + YVal, C->Center.Data[2]);
+	}
+
+	Real Scale = C->Radius / RadialDot;
+	Vector3 P;
+	P.Data[0] = C->Center.Data[0] + N.Data[0] * Scale;
+	P.Data[1] = C->Center.Data[1] + YVal;
+	P.Data[2] = C->Center.Data[2] + N.Data[2] * Scale;
+	return P;
+}
+
+// 0140
+Vector3 SupportCone(const Cone *C, const Vector3 *Dir) {
+	Real Len = KannaVector3Length(Dir);
+	if (NagisaIsZero(Len)) return C->Center;
+
+	Vector3 N = KannaVector3Scale(Dir, 1.0 / Len);
+	// Cone apex is at +HalfHeight along Y, base center at -HalfHeight
+	Real ApexY = C->Center.Data[1] + C->HalfHeight;
+	Real BaseY = C->Center.Data[1] - C->HalfHeight;
+
+	// If direction points up, apex is the furthest point
+	if (N.Data[1] >= REAL_ZERO) {
+		// But also consider the base edge if pointing sideways
+		Real RadialDot = SulettaSqrt(N.Data[0] * N.Data[0] + N.Data[2] * N.Data[2]);
+		if (NagisaIsZero(RadialDot)) {
+			return KannaVector3Make(C->Center.Data[0], ApexY, C->Center.Data[2]);
+		}
+
+		// Check both apex and base edge — pick farthest
+		Vector3 Apex = KannaVector3Make(C->Center.Data[0], ApexY, C->Center.Data[2]);
+		Vector3 BaseEdge;
+		Real Scale = C->Radius / RadialDot;
+		BaseEdge.Data[0] = C->Center.Data[0] + N.Data[0] * Scale;
+		BaseEdge.Data[1] = BaseY;
+		BaseEdge.Data[2] = C->Center.Data[2] + N.Data[2] * Scale;
+
+		Real DApex = KannaVector3Dot(Dir, &Apex);
+		Real DBase = KannaVector3Dot(Dir, &BaseEdge);
+		return DApex >= DBase ? Apex : BaseEdge;
+	}
+
+	// Direction points down — pick base edge point
+	Real RadialDot = SulettaSqrt(N.Data[0] * N.Data[0] + N.Data[2] * N.Data[2]);
+	if (NagisaIsZero(RadialDot)) {
+		return KannaVector3Make(C->Center.Data[0], BaseY, C->Center.Data[2]);
+	}
+	Real Scale = C->Radius / RadialDot;
+	Vector3 P;
+	P.Data[0] = C->Center.Data[0] + N.Data[0] * Scale;
+	P.Data[1] = BaseY;
+	P.Data[2] = C->Center.Data[2] + N.Data[2] * Scale;
+	return P;
+}

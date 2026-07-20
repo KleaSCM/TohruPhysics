@@ -189,3 +189,49 @@ Real    DistanceSphereSphere(const Sphere *A, const Sphere *B);
 Real    DistanceAABBAABB(const AABB *A, const AABB *B);
 // 0130
 Real    DistanceOBBOBB(const OBB *A, const OBB *B);
+
+// ===========================================================================
+//  Additional shape types (for support functions)
+// ===========================================================================
+typedef struct {
+	Vector3 Center;
+	Real    Radius;
+	Real    HalfHeight;
+} Cylinder;
+
+typedef struct {
+	Vector3 Center;
+	Real    Radius;
+	Real    HalfHeight;
+} Cone;
+
+typedef struct {
+	Vector3 *Vertices;
+	int      VertexCount;
+} ConvexHull;
+
+// ===========================================================================
+//  Support functions (Section 1.15) — farthest point along direction
+//  サポート関数 — 方向に沿った最遠点を返すの。
+// ===========================================================================
+
+// 0131
+Vector3 SupportSphere(const Sphere *S, const Vector3 *Dir);
+// 0132
+Vector3 SupportAABB(const AABB *Box, const Vector3 *Dir);
+// 0133
+Vector3 SupportOBB(const OBB *Box, const Vector3 *Dir);
+// 0134
+Vector3 SupportCapsule(const Capsule *C, const Vector3 *Dir);
+// 0135
+Vector3 SupportConvexHull(const ConvexHull *Hull, const Vector3 *Dir);
+// 0136
+Vector3 SupportTriangleMesh(const Triangle *Triangles, int TriCount, const Vector3 *Dir);
+// 0137
+Vector3 SupportCompoundShape(const void **Shapes, const int *Types, int Count, const Vector3 *Dir);
+// 0138
+Vector3 SupportHeightField(const Real *Heights, int Width, int Depth, const Vector3 *Dir);
+// 0139
+Vector3 SupportCylinder(const Cylinder *C, const Vector3 *Dir);
+// 0140
+Vector3 SupportCone(const Cone *C, const Vector3 *Dir);
