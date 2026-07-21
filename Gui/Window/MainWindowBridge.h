@@ -17,14 +17,14 @@
 
 #include "../App/AppState.h"
 
-#include <memory>
-#include "MainWindow.h"
+#include <slint.h>
+#include "_Generated.h"
 
 struct MainWindowBridge {
-	std::shared_ptr<MainWindow> Window;
-	AppState                   *State;
+	slint::ComponentHandle<MainWindow> Window;
+	AppState                          *State;
 };
 
-void MainWindowBridgeInit(MainWindowBridge *Bridge, AppState *State, std::shared_ptr<MainWindow> Window);
+void MainWindowBridgeInit(MainWindowBridge *Bridge, AppState *State, slint::ComponentHandle<MainWindow> Window);
 void MainWindowBridgeSync(MainWindowBridge *Bridge);
 void MainWindowBridgeRegisterCallbacks(MainWindowBridge *Bridge);

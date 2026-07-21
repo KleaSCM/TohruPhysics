@@ -1,5 +1,10 @@
 # Unit tests for TohruPhysics
 # TohruPhysicsの単体テストね。
+
+# KleaSCM: no exceptions, no RTTI, errors on warnings
+add_compile_options(-fno-exceptions -fno-rtti)
+add_compile_options(-Werror -Wno-unused-parameter)
+
 add_executable(TestArena
 	Source/TestArena.cpp
 )

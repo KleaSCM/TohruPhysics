@@ -1,5 +1,11 @@
 add_library(TohruPhysics STATIC)
 
+# KleaSCM: no exceptions, no RTTI, errors on warnings
+target_compile_options(TohruPhysics PRIVATE
+	-fno-exceptions -fno-rtti
+	-Werror -Wno-unused-parameter
+)
+
 target_include_directories(TohruPhysics
 	PUBLIC
 		${PROJECT_SOURCE_DIR}/Include

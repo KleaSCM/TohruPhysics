@@ -50,20 +50,10 @@ target_link_libraries(TpGlad PUBLIC ${CMAKE_DL_LIBS})
 #  SlintのUIファイルをC++ヘッダーにコンパイルするの。
 # ---------------------------------------------------------------------------
 set(TP_SLINT_FILES
-	${CMAKE_CURRENT_SOURCE_DIR}/Theme/Tokens.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Theme/Icons.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Window/MainWindow.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Controls/SimControls.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Controls/PhysicsPanel.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Controls/CameraPanel.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Controls/StatsPanel.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Inspector/BodyInspector.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Demo/DemoLauncher.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Notification/ToastSystem.slint
-	${CMAKE_CURRENT_SOURCE_DIR}/Perf/PerfOverlay.slint
+	${CMAKE_CURRENT_SOURCE_DIR}/_Generated.slint
 )
 
-slint_target_sources(TohruPhysicsGuiSlint ${TP_SLINT_FILES})
+# slint_target_sources is called below on the concrete TohruPhysicsGui target.
 
 # ---------------------------------------------------------------------------
 #  Main GUI sources
@@ -138,6 +128,7 @@ target_link_libraries(TohruPhysicsGui PRIVATE
 	Slint::Slint
 	TpGlad
 	OpenGL::GL
+	PkgConfig::FONTCONFIG
 )
 
 # Shader files are embedded as string literals via a CMake-generated header.
@@ -147,6 +138,8 @@ target_compile_definitions(TohruPhysicsGui PRIVATE
 )
 
 find_package(OpenGL REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FONTCONFIG REQUIRED IMPORTED_TARGET fontconfig)
 
 # Slint compile_slint generates the Slint C++ glue; link it into the target.
 # slint_target_sources must be called on a concrete target.

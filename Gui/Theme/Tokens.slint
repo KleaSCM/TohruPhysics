@@ -9,7 +9,7 @@
 //   import { Tokens } from "Tokens.slint";
 //   background: Tokens.SurfacePrimary;
 
-import { Palette } from "std-widgets.slint";
+import { LineEdit } from "std-widgets.slint";
 
 export global Tokens {
 	/* ------------------------------------------------------------------
@@ -241,16 +241,20 @@ export component TpSlider {
 			}
 
 			SliderTouch := TouchArea {
-				pointer-event(e) => {
-					if (e.button == PointerEventButton.left && e.kind == PointerEventKind.move) {
-						root.CurrentValue = root.Minimum +
-							clamp(e.position.x / self.width, 0.0, 1.0) * (root.Maximum - root.Minimum);
+				moved => {
+					if (self.pressed) {
+						let px = self.mouse-x / 1px;
+						let w = self.width / 1px;
+						let t = min(max(px / w, 0.0), 1.0);
+						root.CurrentValue = root.Minimum + t * (root.Maximum - root.Minimum);
 						root.Changed(root.CurrentValue);
 					}
 				}
 				clicked => {
-					root.CurrentValue = root.Minimum +
-						clamp(self.mouse-x / self.width, 0.0, 1.0) * (root.Maximum - root.Minimum);
+					let px = self.mouse-x / 1px;
+					let w = self.width / 1px;
+					let t = min(max(px / w, 0.0), 1.0);
+					root.CurrentValue = root.Minimum + t * (root.Maximum - root.Minimum);
 					root.Changed(root.CurrentValue);
 				}
 			}
@@ -323,7 +327,6 @@ export component TpSectionHeader {
 	callback ToggleExpanded();
 
 	height: 30px;
-	background: transparent;
 
 	HorizontalLayout {
 		padding-left: Tokens.SpaceMD;
@@ -409,9 +412,7 @@ export component TpNumericField {
 				height: parent.height;
 				text: root.Value;
 				font-size: Tokens.FontSizeBody;
-				color: Tokens.TextPrimary;
-				selection-background-color: Tokens.AccentSubtle;
-				selection-foreground-color: Tokens.TextPrimary;
+				placeholder-text: "";
 				edited(V) => { root.Edited(V); }
 			}
 		}

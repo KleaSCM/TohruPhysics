@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.28)
-project(TohruPhysics VERSION 1.0.0 LANGUAGES CXX)
+project(TohruPhysics VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# KleaSCM: no exceptions, no RTTI
-add_compile_options(-fno-exceptions -fno-rtti)
+# Warnings are useful for all targets, including fetched dependencies
 add_compile_options(-Wall -Wextra -Wpedantic)
-add_compile_options(-Werror -Wno-unused-parameter)
+
+# KleaSCM flags applied per-target in Source/, Test/, Demo/:
+#   -fno-exceptions -fno-rtti -Werror -Wno-unused-parameter
+# GUI targets (Gui/) inherit only warnings + march; Slint needs exceptions.
 
 # Align to 64-byte cache lines for SIMD
 add_compile_options(-march=native -mtune=native)
