@@ -1,0 +1,31 @@
+// PerfOverlay — Real-time performance metrics overlay (§3.15, §3.41).
+// リアルタイムパフォーマンスオーバーレイね。
+
+import { Tokens } from "../Theme/Tokens.slint";
+
+export component PerfOverlay {
+	in property <float> Fps: 60.0;
+	in property <float> FrameMs: 16.6;
+
+	Rectangle {
+		width: 120px;
+		height: 40px;
+		background: #000000aa;
+		border-radius: Tokens.RadiusSM;
+		padding: Tokens.SpaceSM;
+
+		VerticalLayout {
+			Text {
+				text: "FPS: " + Math.round(root.Fps);
+				color: Tokens.StatusSuccess;
+				font-size: Tokens.FontSizeSmall;
+				font-weight: 600;
+			}
+			Text {
+				text: Math.round(root.FrameMs * 10) / 10 + " ms/frame";
+				color: Tokens.TextSecondary;
+				font-size: Tokens.FontSizeTiny;
+			}
+		}
+	}
+}

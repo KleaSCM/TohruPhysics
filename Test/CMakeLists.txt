@@ -64,3 +64,8 @@ add_executable(TestSAT
 	Source/TestSAT.cpp
 )
 target_link_libraries(TestSAT PRIVATE TohruPhysics)
+
+add_executable(TestContactManifold
+	Source/TestContactManifold.cpp
+)
+target_link_libraries(TestContactManifold PRIVATE TohruPhysics)

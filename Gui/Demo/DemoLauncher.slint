@@ -1,0 +1,65 @@
+// DemoLauncher — Demo selection grid panel (§3.32).
+// デモ選択グリッドパネルね。
+
+import { Tokens, TpButton, TpSectionHeader, TpBadge } from "../Theme/Tokens.slint";
+
+export component DemoLauncher {
+	in property <int> ActiveDemoId: -1;
+
+	callback LoadDemo(int);
+
+	VerticalLayout {
+		padding: Tokens.SpaceMD;
+		spacing: Tokens.SpaceMD;
+
+		TpSectionHeader {
+			Title: "Demo Showcase";
+		}
+
+		VerticalLayout {
+			spacing: Tokens.SpaceSM;
+
+			HorizontalLayout {
+				spacing: Tokens.SpaceSM;
+				TpButton {
+					Label: "Rigid Stacking";
+					Primary: root.ActiveDemoId == 1;
+					Clicked => { root.LoadDemo(1); }
+				}
+				TpButton {
+					Label: "Water Wave Sim";
+					Primary: root.ActiveDemoId == 2;
+					Clicked => { root.LoadDemo(2); }
+				}
+			}
+
+			HorizontalLayout {
+				spacing: Tokens.SpaceSM;
+				TpButton {
+					Label: "SPH Fluid Splash";
+					Primary: root.ActiveDemoId == 3;
+					Clicked => { root.LoadDemo(3); }
+				}
+				TpButton {
+					Label: "Ragdoll & Chain";
+					Primary: root.ActiveDemoId == 4;
+					Clicked => { root.LoadDemo(4); }
+				}
+			}
+
+			HorizontalLayout {
+				spacing: Tokens.SpaceSM;
+				TpButton {
+					Label: "Cloth & Soft Body";
+					Primary: root.ActiveDemoId == 5;
+					Clicked => { root.LoadDemo(5); }
+				}
+				TpButton {
+					Label: "Particle Explosion";
+					Primary: root.ActiveDemoId == 6;
+					Clicked => { root.LoadDemo(6); }
+				}
+			}
+		}
+	}
+}

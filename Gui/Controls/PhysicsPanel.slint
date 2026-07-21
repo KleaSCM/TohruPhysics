@@ -1,0 +1,64 @@
+// PhysicsPanel — Global physics parameters panel (§3.4).
+// グローバル物理パラメーターパネルね。
+
+import { Tokens, TpSlider, TpToggle, TpSectionHeader } from "../Theme/Tokens.slint";
+
+export component PhysicsPanel {
+	in-out property <float> LinearDamping: 0.02;
+	in-out property <float> AngularDamping: 0.05;
+	in-out property <float> Restitution: 0.3;
+	in-out property <float> Friction: 0.5;
+	in-out property <bool>  CcdEnabled: false;
+
+	callback DampingChanged(float, float);
+	callback RestitutionChanged(float);
+	callback FrictionChanged(float);
+	callback CcdToggled(bool);
+
+	VerticalLayout {
+		padding: Tokens.SpaceMD;
+		spacing: Tokens.SpaceMD;
+
+		TpSectionHeader {
+			Title: "Physics Parameters";
+		}
+
+		TpSlider {
+			Label: "Linear Damping";
+			Value: root.LinearDamping;
+			Minimum: 0.0;
+			Maximum: 1.0;
+			Changed(V) => { root.DampingChanged(V, root.AngularDamping); }
+		}
+
+		TpSlider {
+			Label: "Angular Damping";
+			Value: root.AngularDamping;
+			Minimum: 0.0;
+			Maximum: 1.0;
+			Changed(V) => { root.DampingChanged(root.LinearDamping, V); }
+		}
+
+		TpSlider {
+			Label: "Restitution";
+			Value: root.Restitution;
+			Minimum: 0.0;
+			Maximum: 1.0;
+			Changed(V) => { root.RestitutionChanged(V); }
+		}
+
+		TpSlider {
+			Label: "Friction";
+			Value: root.Friction;
+			Minimum: 0.0;
+			Maximum: 1.0;
+			Changed(V) => { root.FrictionChanged(V); }
+		}
+
+		TpToggle {
+			Label: "Continuous Collision (CCD)";
+			Active: root.CcdEnabled;
+			Toggled(A) => { root.CcdToggled(A); }
+		}
+	}
+}

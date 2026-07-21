@@ -1,0 +1,52 @@
+// StatsPanel — Live simulation statistics display (§3.14).
+// リアルタイムシミュレーション統計表示パネルね。
+
+import { Tokens, TpSectionHeader } from "../Theme/Tokens.slint";
+
+export component StatsPanel {
+	in property <int>   TotalBodies: 0;
+	in property <int>   ActiveBodies: 0;
+	in property <int>   SleepingBodies: 0;
+	in property <int>   ContactCount: 0;
+	in property <float> Fps: 60.0;
+	in property <float> SimTimeMs: 0.0;
+
+	VerticalLayout {
+		padding: Tokens.SpaceMD;
+		spacing: Tokens.SpaceSM;
+
+		TpSectionHeader {
+			Title: "Simulation Stats";
+		}
+
+		HorizontalLayout {
+			Text { text: "FPS:"; color: Tokens.TextSecondary; font-size: Tokens.FontSizeSmall; }
+			Rectangle { horizontal-stretch: 1; }
+			Text { text: Math.round(root.Fps); color: Tokens.AccentPrimary; font-size: Tokens.FontSizeSmall; font-weight: 600; }
+		}
+
+		HorizontalLayout {
+			Text { text: "Sim Frame Time:"; color: Tokens.TextSecondary; font-size: Tokens.FontSizeSmall; }
+			Rectangle { horizontal-stretch: 1; }
+			Text { text: root.SimTimeMs + " ms"; color: Tokens.TextPrimary; font-size: Tokens.FontSizeSmall; }
+		}
+
+		HorizontalLayout {
+			Text { text: "Total Bodies:"; color: Tokens.TextSecondary; font-size: Tokens.FontSizeSmall; }
+			Rectangle { horizontal-stretch: 1; }
+			Text { text: root.TotalBodies; color: Tokens.TextPrimary; font-size: Tokens.FontSizeSmall; }
+		}
+
+		HorizontalLayout {
+			Text { text: "Active / Sleeping:"; color: Tokens.TextSecondary; font-size: Tokens.FontSizeSmall; }
+			Rectangle { horizontal-stretch: 1; }
+			Text { text: root.ActiveBodies + " / " + root.SleepingBodies; color: Tokens.TextPrimary; font-size: Tokens.FontSizeSmall; }
+		}
+
+		HorizontalLayout {
+			Text { text: "Contacts:"; color: Tokens.TextSecondary; font-size: Tokens.FontSizeSmall; }
+			Rectangle { horizontal-stretch: 1; }
+			Text { text: root.ContactCount; color: Tokens.TextPrimary; font-size: Tokens.FontSizeSmall; }
+		}
+	}
+}

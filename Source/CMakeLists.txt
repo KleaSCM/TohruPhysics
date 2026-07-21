@@ -71,3 +71,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	SAT/SAT.cpp
 )
+
+# Contact Manifold subsystem
+target_sources(TohruPhysics PRIVATE
+	Collision/ContactManifold.cpp
+)

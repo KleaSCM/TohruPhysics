@@ -23,6 +23,7 @@ endif()
 option(TP_BUILD_TESTS "Build unit tests" ON)
 option(TP_BUILD_DEMOS "Build demos" ON)
 option(TP_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(TP_BUILD_GUI "Build Slint GUI application" OFF)
 option(TP_USE_UBSAN "Build with UndefinedBehaviorSanitizer" OFF)
 option(TP_USE_ASAN "Build with AddressSanitizer" OFF)
 
@@ -48,4 +49,8 @@ endif()
 
 if(TP_BUILD_BENCHMARKS AND EXISTS "${CMAKE_SOURCE_DIR}/Bench/CMakeLists.txt")
 	add_subdirectory(Bench)
+endif()
+
+if(TP_BUILD_GUI AND EXISTS "${CMAKE_SOURCE_DIR}/Gui/CMakeLists.txt")
+	add_subdirectory(Gui)
 endif()

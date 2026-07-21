@@ -1,0 +1,49 @@
+// CameraPanel — 3D camera controls panel (§3.5).
+// 3Dカメラ制御パネルね。
+
+import { Tokens, TpSlider, TpToggle, TpButton, TpSectionHeader } from "../Theme/Tokens.slint";
+
+export component CameraPanel {
+	in-out property <float> MoveSpeed: 1.0;
+	in-out property <bool>  OrthoMode: false;
+	in-out property <bool>  AutoRotate: false;
+
+	callback ResetCamera();
+	callback SpeedChanged(float);
+	callback OrthoToggled(bool);
+	callback AutoRotateToggled(bool);
+
+	VerticalLayout {
+		padding: Tokens.SpaceMD;
+		spacing: Tokens.SpaceMD;
+
+		TpSectionHeader {
+			Title: "Camera Controls";
+		}
+
+		TpSlider {
+			Label: "Camera Speed";
+			Value: root.MoveSpeed;
+			Minimum: 0.1;
+			Maximum: 5.0;
+			Changed(V) => { root.SpeedChanged(V); }
+		}
+
+		TpToggle {
+			Label: "Orthographic Projection";
+			Active: root.OrthoMode;
+			Toggled(A) => { root.OrthoToggled(A); }
+		}
+
+		TpToggle {
+			Label: "Auto Rotate View";
+			Active: root.AutoRotate;
+			Toggled(A) => { root.AutoRotateToggled(A); }
+		}
+
+		TpButton {
+			Label: "Reset Home View";
+			Clicked => { root.ResetCamera(); }
+		}
+	}
+}

@@ -1,0 +1,287 @@
+// MainWindow — Main application window layout (§3.2).
+// メインアプリケーションウィンドウレイアウトね。
+
+import { Tokens, TpButton } from "../Theme/Tokens.slint";
+import { SimControls } from "../Controls/SimControls.slint";
+import { PhysicsPanel } from "../Controls/PhysicsPanel.slint";
+import { CameraPanel } from "../Controls/CameraPanel.slint";
+import { StatsPanel } from "../Controls/StatsPanel.slint";
+import { BodyInspector } from "../Inspector/BodyInspector.slint";
+import { DemoLauncher } from "../Demo/DemoLauncher.slint";
+import { ToastSystem } from "../Notification/ToastSystem.slint";
+import { PerfOverlay } from "../Perf/PerfOverlay.slint";
+
+export component MainWindow inherits Window {
+	title: "TohruPhysics Engine GUI — Maid Physics Simulator";
+	preferred-width: 1400px;
+	preferred-height: 850px;
+	background: Tokens.SurfacePrimary;
+
+	/* Public properties bound to C++ AppState */
+	in-out property <bool>  IsRunning: false;
+	in-out property <float> TimeScale: 1.0;
+	in-out property <float> GravityY: -9.81;
+	in-out property <float> LinearDamping: 0.02;
+	in-out property <float> AngularDamping: 0.05;
+	in-out property <float> Restitution: 0.3;
+	in-out property <float> Friction: 0.5;
+	in-out property <bool>  CcdEnabled: false;
+	in-out property <float> CameraSpeed: 1.0;
+	in-out property <bool>  OrthoMode: false;
+	in-out property <bool>  AutoRotate: false;
+	in property <int>       TotalBodies: 0;
+	in property <int>       ActiveBodies: 0;
+	in property <int>       SleepingBodies: 0;
+	in property <int>       ContactCount: 0;
+	in property <float>     Fps: 60.0;
+	in property <float>     SimTimeMs: 0.0;
+	in property <int>       SelectedBodyId: -1;
+	in property <float>     SelectedPosX: 0.0;
+	in property <float>     SelectedPosY: 0.0;
+	in property <float>     SelectedPosZ: 0.0;
+	in property <float>     SelectedMass: 1.0;
+	in property <int>       ActiveDemoId: -1;
+
+	/* Internal tab state */
+	property <int> ActiveTab: 0; /* 0=Sim 1=Physics 2=Camera 3=Demos */
+
+	/* Callbacks wired to C++ bridges */
+	callback PlayClicked();
+	callback PauseClicked();
+	callback StepClicked();
+	callback ResetClicked();
+	callback TimeScaleChanged(float);
+	callback GravityChanged(float);
+	callback DampingChanged(float, float);
+	callback RestitutionChanged(float);
+	callback FrictionChanged(float);
+	callback CcdToggled(bool);
+	callback CameraSpeedChanged(float);
+	callback OrthoToggled(bool);
+	callback AutoRotateToggled(bool);
+	callback ResetCamera();
+	callback LoadDemo(int);
+	callback BodyMassChanged(float);
+	callback RenderViewport();
+
+	VerticalLayout {
+		padding: 0px;
+		spacing: 0px;
+
+		/* Top Menu Bar */
+		Rectangle {
+			height: 38px;
+			background: Tokens.SurfaceSecondary;
+			border-color: Tokens.SurfaceBorder;
+			border-width: 1px;
+
+			HorizontalLayout {
+				padding-left: Tokens.SpaceMD;
+				padding-right: Tokens.SpaceMD;
+				spacing: Tokens.SpaceMD;
+
+				Text {
+					text: "🐉 TohruPhysics Maid Engine";
+					color: Tokens.AccentPrimary;
+					font-size: Tokens.FontSizeMedium;
+					font-weight: 700;
+					vertical-alignment: center;
+				}
+
+				Rectangle { horizontal-stretch: 1; }
+
+				Text {
+					text: "KleaSCM Studio Edition";
+					color: Tokens.TextMuted;
+					font-size: Tokens.FontSizeSmall;
+					vertical-alignment: center;
+				}
+			}
+		}
+
+		/* Main Content Split (Left Sidebar | 3D Viewport | Right Inspector) */
+		HorizontalLayout {
+			vertical-stretch: 1;
+
+			/* Left Control Panel */
+			Rectangle {
+				width: Tokens.SidebarWidth;
+				background: Tokens.SurfaceSecondary;
+				border-color: Tokens.SurfaceBorder;
+				border-width: 1px;
+
+				VerticalLayout {
+					padding: 0px;
+
+					/* Sub-tab selectors */
+					HorizontalLayout {
+						height: 34px;
+						spacing: 2px;
+						padding: 4px;
+
+						TpButton {
+							Label: "Sim";
+							Primary: root.ActiveTab == 0;
+							MinWidth: 50px;
+							Clicked => { root.ActiveTab = 0; }
+						}
+						TpButton {
+							Label: "Physics";
+							Primary: root.ActiveTab == 1;
+							MinWidth: 50px;
+							Clicked => { root.ActiveTab = 1; }
+						}
+						TpButton {
+							Label: "Camera";
+							Primary: root.ActiveTab == 2;
+							MinWidth: 50px;
+							Clicked => { root.ActiveTab = 2; }
+						}
+						TpButton {
+							Label: "Demos";
+							Primary: root.ActiveTab == 3;
+							MinWidth: 50px;
+							Clicked => { root.ActiveTab = 3; }
+						}
+					}
+
+					/* Tab Content */
+					if root.ActiveTab == 0 : SimControls {
+						IsRunning: root.IsRunning;
+						TimeScale: root.TimeScale;
+						GravityY: root.GravityY;
+						PlayClicked => { root.PlayClicked(); }
+						PauseClicked => { root.PauseClicked(); }
+						StepClicked => { root.StepClicked(); }
+						ResetClicked => { root.ResetClicked(); }
+						TimeScaleChanged(V) => { root.TimeScaleChanged(V); }
+						GravityChanged(V) => { root.GravityChanged(V); }
+					}
+
+					if root.ActiveTab == 1 : PhysicsPanel {
+						LinearDamping: root.LinearDamping;
+						AngularDamping: root.AngularDamping;
+						Restitution: root.Restitution;
+						Friction: root.Friction;
+						CcdEnabled: root.CcdEnabled;
+						DampingChanged(L, A) => { root.DampingChanged(L, A); }
+						RestitutionChanged(V) => { root.RestitutionChanged(V); }
+						FrictionChanged(V) => { root.FrictionChanged(V); }
+						CcdToggled(A) => { root.CcdToggled(A); }
+					}
+
+					if root.ActiveTab == 2 : CameraPanel {
+						MoveSpeed: root.CameraSpeed;
+						OrthoMode: root.OrthoMode;
+						AutoRotate: root.AutoRotate;
+						SpeedChanged(V) => { root.CameraSpeedChanged(V); }
+						OrthoToggled(A) => { root.OrthoToggled(A); }
+						AutoRotateToggled(A) => { root.AutoRotateToggled(A); }
+						ResetCamera => { root.ResetCamera(); }
+					}
+
+					if root.ActiveTab == 3 : DemoLauncher {
+						ActiveDemoId: root.ActiveDemoId;
+						LoadDemo(Id) => { root.LoadDemo(Id); }
+					}
+
+					Rectangle { vertical-stretch: 1; }
+				}
+			}
+
+			/* Central 3D Viewport Host Container */
+			Rectangle {
+				horizontal-stretch: 1;
+				background: #0D0E12;
+
+				/* Viewport background label / placeholder */
+				Text {
+					text: "3D OpenGL Physics Viewport";
+					color: #ffffff20;
+					font-size: Tokens.FontSizeLarge;
+					font-weight: 700;
+					horizontal-alignment: center;
+					vertical-alignment: center;
+				}
+
+				/* Performance Overlay in top-left of viewport */
+				PerfOverlay {
+					x: Tokens.SpaceMD;
+					y: Tokens.SpaceMD;
+					Fps: root.Fps;
+					FrameMs: root.SimTimeMs;
+				}
+			}
+
+			/* Right Inspector & Stats Panel */
+			Rectangle {
+				width: Tokens.InspectorWidth;
+				background: Tokens.SurfaceSecondary;
+				border-color: Tokens.SurfaceBorder;
+				border-width: 1px;
+
+				VerticalLayout {
+					padding: 0px;
+					spacing: 0px;
+
+					BodyInspector {
+						SelectedBodyId: root.SelectedBodyId;
+						PosX: root.SelectedPosX;
+						PosY: root.SelectedPosY;
+						PosZ: root.SelectedPosZ;
+						Mass: root.SelectedMass;
+						Restitution: root.Restitution;
+						Friction: root.Friction;
+						MassChanged(M) => { root.BodyMassChanged(M); }
+					}
+
+					Rectangle {
+						height: 1px;
+						background: Tokens.SurfaceBorder;
+					}
+
+					StatsPanel {
+						TotalBodies: root.TotalBodies;
+						ActiveBodies: root.ActiveBodies;
+						SleepingBodies: root.SleepingBodies;
+						ContactCount: root.ContactCount;
+						Fps: root.Fps;
+						SimTimeMs: root.SimTimeMs;
+					}
+
+					Rectangle { vertical-stretch: 1; }
+				}
+			}
+		}
+
+		/* Bottom Status Bar */
+		Rectangle {
+			height: Tokens.StatusBarHeight;
+			background: Tokens.SurfaceSecondary;
+			border-color: Tokens.SurfaceBorder;
+			border-width: 1px;
+
+			HorizontalLayout {
+				padding-left: Tokens.SpaceMD;
+				padding-right: Tokens.SpaceMD;
+
+				Text {
+					text: root.IsRunning ? "● SIMULATION RUNNING" : "|| SIMULATION PAUSED";
+					color: root.IsRunning ? Tokens.StatusSuccess : Tokens.StatusWarning;
+					font-size: Tokens.FontSizeSmall;
+					font-weight: 600;
+					vertical-alignment: center;
+				}
+
+				Rectangle { horizontal-stretch: 1; }
+
+				Text {
+					text: "Tohru Physics Core v1.0.0 | KleaSCM";
+					color: Tokens.TextMuted;
+					font-size: Tokens.FontSizeTiny;
+					vertical-alignment: center;
+				}
+			}
+		}
+	}
+}

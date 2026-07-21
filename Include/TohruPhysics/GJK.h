@@ -75,6 +75,16 @@ typedef struct {
 // ---------------------------------------------------------------------------
 typedef Vector3 (*GJKSupportFn)(const void *Shape, const Vector3 *Dir);
 
+// ---------------------------------------------------------------------------
+//  Cache — warm-start state for temporal coherence across frames
+//  キャッシュ — フレーム間の時間的コヒーレンス用
+// ---------------------------------------------------------------------------
+typedef struct {
+	Vector3 Simplex[GJK_SIMPLEX_SIZE]; // cached simplex points from last frame
+	int     SimplexCount;              // valid count (1-4)
+	Real    DistanceSq;                // cached distance squared
+} GJKCache;
+
 // ===========================================================================
 //  GJK functions
 // ===========================================================================
@@ -84,6 +94,13 @@ void GJKInit(GJKState *State, const Vector3 *InitialDir,
              const void *ShapeA, GJKSupportFn SupportA,
              const void *ShapeB, GJKSupportFn SupportB,
              Real Tolerance, int MaxIter);
+
+// 0141b: Initialise with cached simplex from previous frame for warm-start.
+//        Pass NULL for Cache to fall back to standard init.
+void GJKInitCached(GJKState *State, GJKCache *Cache,
+                   const void *ShapeA, GJKSupportFn SupportA,
+                   const void *ShapeB, GJKSupportFn SupportB,
+                   Real Tolerance, int MaxIter);
 
 // 0142–0149: Run the full GJK iteration loop.
 void GJKEvaluate(GJKState *State,
@@ -124,6 +141,7 @@ typedef struct {
 	Real      PenetrationDepth;
 	Vector3   ContactNormal;
 	Vector3   ContactPoint;
+	Real      Barycentric[3];   // barycentric weights of ContactPoint on closest triangle
 } EPAState;
 
 // 0151: Initialise EPA from GJK's final simplex

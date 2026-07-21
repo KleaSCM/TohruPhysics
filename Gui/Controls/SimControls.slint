@@ -1,0 +1,74 @@
+// SimControls — Simulation control panel component (§3.3).
+// シミュレーション制御パネルコンポーネントね。
+
+import { Tokens, TpButton, TpSlider, TpSectionHeader } from "../Theme/Tokens.slint";
+import { Icons } from "../Theme/Icons.slint";
+
+export component SimControls {
+	in-out property <bool>   IsRunning: false;
+	in-out property <float>  TimeScale: 1.0;
+	in-out property <float>  GravityY: -9.81;
+	in-out property <int>    SubSteps: 4;
+	in-out property <int>    SolverIterations: 10;
+
+	callback PlayClicked();
+	callback PauseClicked();
+	callback StepClicked();
+	callback ResetClicked();
+	callback TimeScaleChanged(float);
+	callback GravityChanged(float);
+
+	VerticalLayout {
+		padding: Tokens.SpaceMD;
+		spacing: Tokens.SpaceMD;
+
+		TpSectionHeader {
+			Title: "Simulation Controls";
+		}
+
+		HorizontalLayout {
+			spacing: Tokens.SpaceSM;
+
+			TpButton {
+				Label: root.IsRunning ? Icons.PauseIcon : Icons.PlayIcon;
+				Primary: true;
+				Clicked => {
+					if (root.IsRunning) {
+						root.PauseClicked();
+					} else {
+						root.PlayClicked();
+					}
+				}
+			}
+
+			TpButton {
+				Label: Icons.StepIcon;
+				Clicked => { root.StepClicked(); }
+			}
+
+			TpButton {
+				Label: Icons.ResetIcon;
+				Danger: true;
+				Clicked => { root.ResetClicked(); }
+			}
+		}
+
+		TpSlider {
+			Label: "Time Scale";
+			Value: root.TimeScale;
+			Minimum: 0.1;
+			Maximum: 10.0;
+			Unit: "x";
+			Changed(V) => { root.TimeScaleChanged(V); }
+		}
+
+		TpSlider {
+			Label: "Gravity Y";
+			Value: root.GravityY;
+			Minimum: -30.0;
+			Maximum: 30.0;
+			Unit: "m/s²";
+			Changed(V) => { root.GravityChanged(V); }
+		}
+	}
+}

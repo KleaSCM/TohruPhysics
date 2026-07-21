@@ -1667,8 +1667,6 @@ Defensive Programming --> Performance --> Safety
 
 # Block 2: Physics Engine Core & Advanced Simulation (1001-2000)
 
----
-
 #### 2.1 Rigid Body Dynamics - Advanced Mass Properties
 - [ ] 1001. Implement `MassPropertiesCompute` complete mass, center, and inertia computation pipeline.
 - [ ] 1002. Write `MassPropertiesScale` uniform scaling of all mass properties.

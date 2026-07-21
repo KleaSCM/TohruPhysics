@@ -99,6 +99,40 @@ void GJKInit(GJKState *State, const Vector3 *InitialDir,
 //  0142–0149: GJK main loop
 // ===========================================================================
 
+// ===========================================================================
+//  0141b: GJK init with cache (warm-start)
+// ===========================================================================
+
+void GJKInitCached(GJKState *State, GJKCache *Cache,
+                   const void *ShapeA, GJKSupportFn SupportA,
+                   const void *ShapeB, GJKSupportFn SupportB,
+                   Real Tolerance, int MaxIter)
+{
+	memset(State, 0, sizeof(GJKState));
+	State->Tolerance = Tolerance > REAL_ZERO ? Tolerance : (Real)1e-6;
+	State->MaxIterations = MaxIter > 0 ? MaxIter : GJK_MAX_ITERATIONS;
+
+	if (Cache && Cache->SimplexCount > 0 && Cache->SimplexCount <= GJK_SIMPLEX_SIZE) {
+		// Reuse cached simplex as starting guess
+		for (int I = 0; I < Cache->SimplexCount; I++) {
+			State->Simplex[I].Point = Cache->Simplex[I];
+			State->Simplex[I].Direction = KannaVector3Scale(&Cache->Simplex[I], -1.0);
+		}
+		State->SimplexCount = Cache->SimplexCount;
+		State->DistanceSq = Cache->DistanceSq;
+	} else if (State->SimplexCount == 0) {
+		// No cache — single point toward origin from default direction
+		Vector3 InitDir = KannaVector3Make(1, 0, 0);
+		Vector3 NegDir = KannaVector3Scale(&InitDir, -1.0);
+		Vector3 PA = SupportA(ShapeA, &InitDir);
+		Vector3 NB = SupportB(ShapeB, &NegDir);
+		State->Simplex[0].Point = KannaVector3Sub(&PA, &NB);
+		State->Simplex[0].Direction = InitDir;
+		State->SimplexCount = 1;
+		State->DistanceSq = KannaVector3LengthSq(&State->Simplex[0].Point);
+	}
+}
+
 void GJKEvaluate(GJKState *State,
                  const void *ShapeA, GJKSupportFn SupportA,
                  const void *ShapeB, GJKSupportFn SupportB)
@@ -258,6 +292,46 @@ Vector3 GJKClosestPointOnSimplex(const GJKState *State) {
 }
 
 // ===========================================================================
+//  ClosestOnTriWithBary — closest point on triangle to origin + barycentric
+//  三角形上の原点に最も近い点＋重心座標ね。
+// ===========================================================================
+static Real ClosestOnTriWithBary(const Vector3 *A, const Vector3 *B, const Vector3 *C,
+                                  Vector3 *Closest, Real Bary[3])
+{
+	Vector3 AB = KannaVector3Sub(B, A);
+	Vector3 AC = KannaVector3Sub(C, A);
+	Vector3 AO = KannaVector3Scale(A, -1.0);
+
+	Real ABdotAB = KannaVector3Dot(&AB, &AB);
+	Real ACdotAC = KannaVector3Dot(&AC, &AC);
+	Real ABdotAC = KannaVector3Dot(&AB, &AC);
+	Real ABdotAO = KannaVector3Dot(&AB, &AO);
+	Real ACdotAO = KannaVector3Dot(&AC, &AO);
+
+	Real Det = ABdotAB * ACdotAC - ABdotAC * ABdotAC;
+	if (NagisaIsZero(Det)) Det = 1.0;
+
+	Real U = (ACdotAC * ABdotAO - ABdotAC * ACdotAO) / Det;
+	Real V = (ABdotAB * ACdotAO - ABdotAC * ABdotAO) / Det;
+	Real W = 0;
+	if (U < 0) { U = 0; }
+	if (V < 0) { V = 0; }
+	if (U + V > 1.0) { Real S = U + V; if (S > 0) { U /= S; V /= S; } else { U = 0; V = 1; } }
+	W = 1.0 - U - V;
+
+	Vector3 BU = KannaVector3Scale(&AB, U);
+	Vector3 CV = KannaVector3Scale(&AC, V);
+	*Closest = KannaVector3Add(A, &BU);
+	*Closest = KannaVector3Add(Closest, &CV);
+
+	Bary[0] = W;  // weight for A
+	Bary[1] = U;  // weight for B
+	Bary[2] = V;  // weight for C
+
+	return KannaVector3LengthSq(Closest);
+}
+
+// ===========================================================================
 //  EPA — Expanding Polytope Algorithm (Section 1.17)
 // ===========================================================================
 
@@ -291,6 +365,7 @@ void EPAInit(EPAState *E, const GJKState *G, Real Tolerance, int MaxIter) {
 	E->PenetrationDepth = 0;
 	E->ContactNormal = KannaVector3Make(0, 1, 0);
 	E->ContactPoint = KannaVector3Zero();
+	E->Barycentric[0] = E->Barycentric[1] = E->Barycentric[2] = 1.0/3.0;
 
 	// Copy GJK tetrahedron vertices
 	int SV = G->SimplexCount < 4 ? G->SimplexCount : 4;
@@ -367,8 +442,7 @@ void EPAEvaluate(EPAState *E,
 			const Vector3 *V1 = &E->Vertices[ClosestFace->Indices[1]];
 			const Vector3 *V2 = &E->Vertices[ClosestFace->Indices[2]];
 			Vector3 Closest;
-			Vector3 DummyDir;
-			ClosestOnTri(V0, V1, V2, &Closest, &DummyDir);
+			ClosestOnTriWithBary(V0, V1, V2, &Closest, E->Barycentric);
 			E->ContactPoint = Closest;
 			return;
 		}
@@ -380,6 +454,7 @@ void EPAEvaluate(EPAState *E,
 			E->PenetrationDepth = ClosestDist;
 			E->ContactNormal = ClosestFace->Normal;
 			E->ContactPoint = KannaVector3Zero();
+			E->Barycentric[0] = E->Barycentric[1] = E->Barycentric[2] = 1.0/3.0;
 			return;
 		}
 

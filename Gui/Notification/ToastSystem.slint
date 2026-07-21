@@ -1,0 +1,26 @@
+// ToastSystem — Notification toast overlays (§3.30).
+// トースト通知オーバーレイね。
+
+import { Tokens } from "../Theme/Tokens.slint";
+
+export component ToastSystem {
+	in property <string> LastMessage: "";
+	in property <bool>   HasMessage: false;
+
+	if root.HasMessage : Rectangle {
+		height: 36px;
+		background: Tokens.SurfaceElevated;
+		border-radius: Tokens.RadiusMD;
+		border-color: Tokens.AccentPrimary;
+		border-width: 1px;
+		padding-left: Tokens.SpaceMD;
+		padding-right: Tokens.SpaceMD;
+
+		Text {
+			text: root.LastMessage;
+			color: Tokens.TextPrimary;
+			font-size: Tokens.FontSizeBody;
+			vertical-alignment: center;
+		}
+	}
+}

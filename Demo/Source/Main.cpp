@@ -18,6 +18,10 @@
 #include <TohruPhysics/Transform.h>
 #include <TohruPhysics/BodyState.h>
 #include <TohruPhysics/Geometry.h>
+#include <TohruPhysics/GJK.h>
+#include <TohruPhysics/SAT.h>
+#include <TohruPhysics/ContactManifold.h>
+#include <TohruPhysics/Array.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -261,11 +265,189 @@ static void DemoGeometry(void) {
 }
 
 // ===========================================================================
-//  7. BodyState demo
+//  7. GJK & SAT demo
+// ===========================================================================
+
+static Vector3 SupportSphereWrap(const void *Shape, const Vector3 *Dir) {
+	return SupportSphere((const Sphere *)Shape, Dir);
+}
+
+static void DemoGJKSAT(void) {
+	HEADER("7. GJK & SAT — Distance & Separating Axis");
+
+	// GJK: separated spheres
+	Vector3 CA = KannaVector3Make(0,0,0);
+	Vector3 CB = KannaVector3Make(8,0,0);
+	Sphere SA = SabinaSphereMake(&CA, 2.0);
+	Sphere SB = SabinaSphereMake(&CB, 2.0);
+	Vector3 InitDir = KannaVector3Make(1,0,0);
+	GJKState G;
+	GJKInit(&G, &InitDir, &SA, SupportSphereWrap, &SB, SupportSphereWrap, 1e-6, 32);
+	GJKEvaluate(&G, &SA, SupportSphereWrap, &SB, SupportSphereWrap);
+	Real Dist = SulettaSqrt(G.DistanceSq);
+	fprintf(stderr, "  GJK: sphere dist=%.1f  (gap=%d, expected=4)\n",
+		Dist, G.Converged);
+
+	// GJK: overlapping spheres → EPA
+	CB.Data[0] = 3.0;
+	Sphere SC = SabinaSphereMake(&CB, 2.0);
+	GJKState G2;
+	GJKInit(&G2, &InitDir, &SA, SupportSphereWrap, &SC, SupportSphereWrap, 1e-6, 32);
+	GJKEvaluate(&G2, &SA, SupportSphereWrap, &SC, SupportSphereWrap);
+	fprintf(stderr, "  GJK: overlapping: degenerate=%d\n", G2.Degenerate);
+
+	if (G2.Degenerate) {
+		EPAState E;
+		EPAInit(&E, &G2, 1e-6, 64);
+		EPAEvaluate(&E, &SA, SupportSphereWrap, &SC, SupportSphereWrap);
+		fprintf(stderr, "  EPA: pen=%.2f  normal=(%.2f,%.2f,%.2f)\n",
+			E.PenetrationDepth,
+			E.ContactNormal.Data[0], E.ContactNormal.Data[1],
+			E.ContactNormal.Data[2]);
+		fprintf(stderr, "  EPA: bary=(%.2f,%.2f,%.2f)\n",
+			E.Barycentric[0], E.Barycentric[1], E.Barycentric[2]);
+	}
+
+	// SAT: OBB-OBB
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	Vector3 HE1 = KannaVector3Make(2,1,1);
+	Vector3 C1 = KannaVector3Zero();
+	OBB O1 = SabinaOBBMake(&C1, &HE1, &Id);
+	Vector3 HE2 = KannaVector3Make(2,1,1);
+	Vector3 C2 = KannaVector3Make(2,0,0);
+	OBB O2 = SabinaOBBMake(&C2, &HE2, &Id);
+	SATResult SR = SintoOBBOBB(&O1, &O2);
+	fprintf(stderr, "  SAT: OBB-OBB intersect=%d  pen=%.2f  norm=(%.2f,%.2f,%.2f)\n",
+		SR.Intersect, SR.PenetrationDepth,
+		SR.Normal.Data[0], SR.Normal.Data[1], SR.Normal.Data[2]);
+}
+
+// ===========================================================================
+//  8. Contact Manifold demo
+// ===========================================================================
+
+static void DemoContactManifold(void) {
+	HEADER("8. Contact Manifold — Clipping & Contact Points");
+
+	// OBB-OBB: clipping manifold
+	Quaternion Id = EuphylliaQuaternionIdentity();
+	Vector3 HE = KannaVector3Make(2,2,2);
+	Vector3 C = KannaVector3Zero();
+	OBB BoxA = SabinaOBBMake(&C, &HE, &Id);
+	Vector3 C2 = KannaVector3Make(2.5,0,0);
+	OBB BoxB = SabinaOBBMake(&C2, &HE, &Id);
+	Transform Tx = KaedeTransformIdentity();
+
+	ContactManifold M;
+	ManifoldOBBOBB(&BoxA, &Tx, &BoxB, &Tx, &M);
+	fprintf(stderr, "  OBB-OBB manifold: %d points, pen=%.2f, norm=(%.2f,%.2f,%.2f)\n",
+		M.PointCount, M.Penetration,
+		M.Normal.Data[0], M.Normal.Data[1], M.Normal.Data[2]);
+	for (int I = 0; I < M.PointCount && I < 4; I++) {
+		fprintf(stderr, "    pt[%d] pos=(%.2f,%.2f,%.2f) pen=%.2f\n",
+			I,
+			M.Points[I].Position.Data[0],
+			M.Points[I].Position.Data[1],
+			M.Points[I].Position.Data[2],
+			M.Points[I].Penetration);
+	}
+
+	// Sphere-Sphere manifold
+	Sphere SphA = { {0,0,0}, 3.0f };
+	Sphere SphB = { {4,0,0}, 3.0f };
+	ContactManifold MS;
+	ManifoldSphereSphere(&SphA, &Tx, &SphB, &Tx, &MS);
+	fprintf(stderr, "  Sphere-Sphere manifold: %d pts pen=%.2f norm=(%.2f,%.2f,%.2f)\n",
+		MS.PointCount, MS.Penetration,
+		MS.Normal.Data[0], MS.Normal.Data[1], MS.Normal.Data[2]);
+
+	// Capsule-Capsule manifold
+	Vector3 StA = KannaVector3Make(0,0,0);
+	Vector3 EnA = KannaVector3Make(0,4,0);
+	Vector3 StB = KannaVector3Make(0,2,2);
+	Vector3 EnB = KannaVector3Make(0,6,2);
+	Capsule CapA = SabinaCapsuleMake(&StA, &EnA, 1.0);
+	Capsule CapB = SabinaCapsuleMake(&StB, &EnB, 1.0);
+	ContactManifold MC;
+	ManifoldCapsuleCapsule(&CapA, &Tx, &CapB, &Tx, &MC);
+	fprintf(stderr, "  Capsule-Capsule manifold: %d pts pen=%.2f\n",
+		MC.PointCount, MC.Penetration);
+
+	// AABB-AABB manifold
+	Vector3 MinA = KannaVector3Make(-3,-3,-3);
+	Vector3 MaxA = KannaVector3Make(3,3,3);
+	Vector3 MinB = KannaVector3Make(1,1,1);
+	Vector3 MaxB = KannaVector3Make(7,7,7);
+	AABB BoxAabb = SabinaAABBMake(&MinA, &MaxA);
+	AABB BoxBbb = SabinaAABBMake(&MinB, &MaxB);
+	ContactManifold MAB;
+	ManifoldAABBAABB(&BoxAabb, &Tx, &BoxBbb, &Tx, &MAB);
+	fprintf(stderr, "  AABB-AABB manifold: %d pts pen=%.2f\n",
+		MAB.PointCount, MAB.Penetration);
+}
+
+static int CmpIntAsc(const void *A, const void *B) {
+	int IA = *(const int*)A, IB = *(const int*)B;
+	return (IA > IB) - (IA < IB);
+}
+
+// ===========================================================================
+//  9. Array demo
+// ===========================================================================
+
+static void DemoArray(void) {
+	HEADER("9. Array — Arena-Backed Dynamic Array");
+
+	Arena Arena;
+	TohruArenaInit(&Arena, 4096);
+
+	Array Arr;
+	TiltyArrayInit(&Arena, &Arr, sizeof(int), 4);
+	fprintf(stderr, "  Init: cap=%zu  len=%zu\n", Arr.Capacity, Arr.Length);
+
+	int Vals[] = {30, 10, 50, 20, 40};
+	for (int I = 0; I < 5; I++) {
+		TiltyArrayPush(&Arr, &Vals[I]);
+	}
+	fprintf(stderr, "  Push 5: len=%zu  cap=%zu  data[0]=%d  data[4]=%d\n",
+		Arr.Length, Arr.Capacity,
+		*(int*)TiltyArrayGet(&Arr, 0),
+		*(int*)TiltyArrayGet(&Arr, 4));
+
+	// Insert + remove
+	int V = 15;
+	TiltyArrayInsert(&Arr, 1, &V);
+	fprintf(stderr, "  Insert 15 @1: len=%zu  data[1]=%d\n",
+		Arr.Length, *(int*)TiltyArrayGet(&Arr, 1));
+
+	TiltyArrayRemove(&Arr, 1);
+	fprintf(stderr, "  Remove @1: len=%zu  data[1]=%d\n",
+		Arr.Length, *(int*)TiltyArrayGet(&Arr, 1));
+
+	// Sort
+	TiltyArraySort(&Arr, CmpIntAsc);
+	fprintf(stderr, "  Sort: ");
+	for (size_t I = 0; I < Arr.Length; I++) {
+		fprintf(stderr, "%s%d", I > 0 ? " " : "", *(int*)TiltyArrayGet(&Arr, I));
+	}
+	fprintf(stderr, "\n");
+
+	// Pop + Front + Back
+	int *F = (int*)TiltyArrayFront(&Arr);
+	int *B = (int*)TiltyArrayBack(&Arr);
+	int *P = (int*)TiltyArrayPop(&Arr);
+	fprintf(stderr, "  Front=%d  Back=%d  Pop=%d  len=%zu\n",
+		*F, *B, *P, Arr.Length);
+
+	TohruArenaDestroy(&Arena);
+}
+
+// ===========================================================================
+//  10. BodyState demo
 // ===========================================================================
 
 static void DemoBodyState(void) {
-	HEADER("7. BodyState — Physics Body Components");
+	HEADER("10. BodyState — Physics Body Components");
 
 	Vector3 Pos = KannaVector3Make(0, 10, 0);
 	Quaternion Rot = EuphylliaQuaternionIdentity();
@@ -310,11 +492,11 @@ static void DemoBodyState(void) {
 }
 
 // ===========================================================================
-//  8. Math demo
+//  11. Math demo
 // ===========================================================================
 
 static void DemoMath(void) {
-	HEADER("8. Math — Trigonometry & Numerical Functions");
+	HEADER("11. Math — Trigonometry & Numerical Functions");
 
 	fprintf(stderr, "  sin(0)=%.6f  sin(π/2)=%.6f  sin(π)=%.6f\n",
 		SulettaSin(0), SulettaSin(REAL_PI_HALF), SulettaSin(REAL_PI));
@@ -335,11 +517,11 @@ static void DemoMath(void) {
 }
 
 // ===========================================================================
-//  9. Performance snapshot
+//  12. Performance snapshot
 // ===========================================================================
 
 static void DemoPerformance(void) {
-	HEADER("9. Performance — Quick Benchmarks");
+	HEADER("12. Performance — Quick Benchmarks");
 
 	long long T0, T1;
 	int I;
@@ -422,6 +604,9 @@ int main(void) {
 	DemoQuaternion();
 	DemoTransform();
 	DemoGeometry();
+	DemoGJKSAT();
+	DemoContactManifold();
+	DemoArray();
 	DemoBodyState();
 	DemoMath();
 	DemoPerformance();

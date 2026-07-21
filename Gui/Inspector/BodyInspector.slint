@@ -1,0 +1,79 @@
+// BodyInspector — Inspector for body properties (§3.9–§3.10).
+// ボディプロパティのインスペクターね。
+
+import { Tokens, TpSectionHeader, TpSlider, TpButton } from "../Theme/Tokens.slint";
+
+export component BodyInspector {
+	in property <int>   SelectedBodyId: -1;
+	in property <float> PosX: 0.0;
+	in property <float> PosY: 0.0;
+	in property <float> PosZ: 0.0;
+	in property <float> Mass: 1.0;
+	in property <float> Restitution: 0.3;
+	in property <float> Friction: 0.5;
+
+	callback MassChanged(float);
+	callback RestitutionChanged(float);
+	callback FrictionChanged(float);
+
+	VerticalLayout {
+		padding: Tokens.SpaceMD;
+		spacing: Tokens.SpaceMD;
+
+		TpSectionHeader {
+			Title: "Body Inspector";
+		}
+
+		if root.SelectedBodyId < 0 : Text {
+			text: "No body selected";
+			color: Tokens.TextMuted;
+			font-size: Tokens.FontSizeBody;
+			horizontal-alignment: center;
+		}
+
+		if root.SelectedBodyId >= 0 : VerticalLayout {
+			spacing: Tokens.SpaceSM;
+
+			HorizontalLayout {
+				Text { text: "Body ID:"; color: Tokens.TextSecondary; font-size: Tokens.FontSizeSmall; }
+				Rectangle { horizontal-stretch: 1; }
+				Text { text: root.SelectedBodyId; color: Tokens.AccentPrimary; font-size: Tokens.FontSizeSmall; font-weight: 600; }
+			}
+
+			HorizontalLayout {
+				Text { text: "Position:"; color: Tokens.TextSecondary; font-size: Tokens.FontSizeSmall; }
+				Rectangle { horizontal-stretch: 1; }
+				Text {
+					text: "(" + Math.round(root.PosX * 10) / 10 + ", " + Math.round(root.PosY * 10) / 10 + ", " + Math.round(root.PosZ * 10) / 10 + ")";
+					color: Tokens.TextPrimary;
+					font-size: Tokens.FontSizeSmall;
+				}
+			}
+
+			TpSlider {
+				Label: "Mass";
+				Value: root.Mass;
+				Minimum: 0.1;
+				Maximum: 100.0;
+				Unit: "kg";
+				Changed(V) => { root.MassChanged(V); }
+			}
+
+			TpSlider {
+				Label: "Restitution";
+				Value: root.Restitution;
+				Minimum: 0.0;
+				Maximum: 1.0;
+				Changed(V) => { root.RestitutionChanged(V); }
+			}
+
+			TpSlider {
+				Label: "Friction";
+				Value: root.Friction;
+				Minimum: 0.0;
+				Maximum: 1.0;
+				Changed(V) => { root.FrictionChanged(V); }
+			}
+		}
+	}
+}
