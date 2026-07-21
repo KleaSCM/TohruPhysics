@@ -346,9 +346,9 @@ static void EPAComputeFaceNormal(const Vector3 *V0, const Vector3 *V1,
 	if (!NagisaIsZero(Len)) {
 		*Normal = KannaVector3Scale(Normal, 1.0 / Len);
 	}
-	// Ensure normal points outward (away from origin)
+	// Ensure normal points outward (away from origin toward vertex)
 	Real Dot = KannaVector3Dot(Normal, V0);
-	if (Dot > REAL_ZERO) {
+	if (Dot < REAL_ZERO) {
 		*Normal = KannaVector3Scale(Normal, -1.0);
 	}
 }

@@ -3,7 +3,8 @@
  * TohruPhysicsのターミナルデモ — 全サブシステムのデモンストレーションね。
  *
  * Demonstrates: Arena, Vector3, Matrix, Quaternion, Transform,
- * BodyState, Geometry (primitives + intersections), Math (trig + bench).
+ * BodyState, Geometry (primitives + intersections + closest point + support),
+ * GJK/EPA/SAT, ContactManifold, Array, Math, Error/Log, benchmarks.
  *
  * All output goes to stderr (clean pipe separation).
  * 全ての出力はstderrに出るの（パイプ分離に対応）。
@@ -22,6 +23,8 @@
 #include <TohruPhysics/SAT.h>
 #include <TohruPhysics/ContactManifold.h>
 #include <TohruPhysics/Array.h>
+#include <TohruPhysics/Error.h>
+#include <TohruPhysics/Log.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -210,7 +213,7 @@ static void DemoTransform(void) {
 }
 
 // ===========================================================================
-//  6. Geometry demo
+//  6. Geometry demo (primitives, intersections, closest point, support)
 // ===========================================================================
 
 static void DemoGeometry(void) {
@@ -262,6 +265,54 @@ static void DemoGeometry(void) {
 		IntersectAABBAABB(&Box, &Box2),
 		IntersectAABBOBB(&Box, &O),
 		IntersectOBBOBB(&O, &O2));
+
+	// Ray intersections
+	Vector3 RO = KannaVector3Make(-5, 0, 0);
+	Vector3 RD = KannaVector3Make(1, 0, 0);
+	Ray R = SabinaRayMake(&RO, &RD);
+	Real RTMin, RTMax;
+	int Hit = IntersectRayAABB(&R, &Box, &RTMin, &RTMax);
+	fprintf(stderr, "  Ray-AABB: hit=%d  t=(%.2f,%.2f)\n", Hit, RTMin, RTMax);
+
+	// Ray-Triangle intersection (build triangle from OBB corners)
+	Triangle Tri;
+	Tri.V0 = Corners[0];
+	Tri.V1 = Corners[1];
+	Tri.V2 = Corners[2];
+	Real RTT;
+	int RTH = IntersectRayTriangle(&R, &Tri, &RTT);
+	fprintf(stderr, "  Ray-Tri: hit=%d  t=%.2f\n", RTH, RTT);
+
+	// Segment intersections
+	Vector3 SSt = KannaVector3Make(-3, 0, 0);
+	Vector3 SEn = KannaVector3Make(3, 0, 0);
+	Segment Seg2 = SabinaSegmentMake(&SSt, &SEn);
+	Real SHT0, SHT1;
+	int SHit = IntersectSegmentSphere(&Seg2, &S, &SHT0, &SHT1);
+	fprintf(stderr, "  Segment-Sphere: hit=%d  t=(%.2f,%.2f)\n", SHit, SHT0, SHT1);
+
+	// Closest point queries
+	Vector3 QP = KannaVector3Make(5, 1, 1);
+	Vector3 CPA = SabinaAABBClosestPoint(&Box, &QP);
+	fprintf(stderr, "  ClosestPoint-AABB: (%.1f,%.1f,%.1f)\n",
+		CPA.Data[0], CPA.Data[1], CPA.Data[2]);
+
+	Vector3 CPO = SabinaOBBClosestPoint(&O, &QP);
+	fprintf(stderr, "  ClosestPoint-OBB:  (%.1f,%.1f,%.1f)\n",
+		CPO.Data[0], CPO.Data[1], CPO.Data[2]);
+
+	// Support functions
+	Vector3 SD = KannaVector3Make(1, 0, 0);
+	Vector3 SPT = SupportAABB(&Box, &SD);
+	fprintf(stderr, "  Support AABB along (1,0,0): (%.1f,%.1f,%.1f)\n",
+		SPT.Data[0], SPT.Data[1], SPT.Data[2]);
+	SPT = SupportSphere(&S, &SD);
+	fprintf(stderr, "  Support Sphere along (1,0,0): (%.1f,%.1f,%.1f)\n",
+		SPT.Data[0], SPT.Data[1], SPT.Data[2]);
+
+	// Distance queries
+	Real D = DistanceSphereSphere(&S, &S2);
+	fprintf(stderr, "  Distance Sphere-Sphere: %.2f\n", D);
 }
 
 // ===========================================================================
@@ -285,7 +336,7 @@ static void DemoGJKSAT(void) {
 	GJKInit(&G, &InitDir, &SA, SupportSphereWrap, &SB, SupportSphereWrap, 1e-6, 32);
 	GJKEvaluate(&G, &SA, SupportSphereWrap, &SB, SupportSphereWrap);
 	Real Dist = SulettaSqrt(G.DistanceSq);
-	fprintf(stderr, "  GJK: sphere dist=%.1f  (gap=%d, expected=4)\n",
+	fprintf(stderr, "  GJK: sphere dist=%.1f  (converged=%d)\n",
 		Dist, G.Converged);
 
 	// GJK: overlapping spheres → EPA
@@ -361,17 +412,18 @@ static void DemoContactManifold(void) {
 		MS.PointCount, MS.Penetration,
 		MS.Normal.Data[0], MS.Normal.Data[1], MS.Normal.Data[2]);
 
-	// Capsule-Capsule manifold
+	// Capsule-Capsule manifold (overlapping: segments offset by 1 in Z, radii=1.5 each)
 	Vector3 StA = KannaVector3Make(0,0,0);
 	Vector3 EnA = KannaVector3Make(0,4,0);
-	Vector3 StB = KannaVector3Make(0,2,2);
-	Vector3 EnB = KannaVector3Make(0,6,2);
-	Capsule CapA = SabinaCapsuleMake(&StA, &EnA, 1.0);
-	Capsule CapB = SabinaCapsuleMake(&StB, &EnB, 1.0);
+	Vector3 StB = KannaVector3Make(0,0,0.5);
+	Vector3 EnB = KannaVector3Make(0,4,0.5);
+	Capsule CapA = SabinaCapsuleMake(&StA, &EnA, 1.5);
+	Capsule CapB = SabinaCapsuleMake(&StB, &EnB, 1.5);
 	ContactManifold MC;
 	ManifoldCapsuleCapsule(&CapA, &Tx, &CapB, &Tx, &MC);
-	fprintf(stderr, "  Capsule-Capsule manifold: %d pts pen=%.2f\n",
-		MC.PointCount, MC.Penetration);
+	fprintf(stderr, "  Capsule-Capsule manifold: %d pts pen=%.2f norm=(%.2f,%.2f,%.2f)\n",
+		MC.PointCount, MC.Penetration,
+		MC.Normal.Data[0], MC.Normal.Data[1], MC.Normal.Data[2]);
 
 	// AABB-AABB manifold
 	Vector3 MinA = KannaVector3Make(-3,-3,-3);
@@ -586,6 +638,37 @@ static void DemoPerformance(void) {
 }
 
 // ===========================================================================
+//  13. Error & Log demo
+// ===========================================================================
+
+static void DemoErrorLog(void) {
+	HEADER("13. Error & Log — Startup Safety & Custom Logging");
+
+	// Error type: zero-init is Ok
+	Error E0 = {};
+	fprintf(stderr, "  Error{}: code=%d  isOk=%d  isFail=%d\n",
+		E0.Code, ErrIsOk(E0), ErrIsFail(E0));
+
+	// ErrorCodeToString
+	Error E1 = ErrMake(ErrorCode_OutOfMemory);
+	fprintf(stderr, "  ErrMake(OOM): code=%d  str=\"%s\"\n",
+		E1.Code, ErrorCodeToString(E1.Code));
+
+	// Result<int>
+	Result<int> Res = {42, ErrOk()};
+	fprintf(stderr, "  Result<int>(42): value=%d  ok=%d\n",
+		Res.Value, Res.Ok());
+
+	// Log: redirect to stderr
+	TohruLogSetLevel(LogLevel_Debug);
+	TohruLogSetOutputFD(2);
+	TohruLogInfo("Demo logging: info message — level=%d", LogLevel_Info);
+	TohruLogDebug("Demo logging: debug message — level=%d", LogLevel_Debug);
+	TohruLogWarn("Demo logging: warning — code=%d", ErrorCode_InvalidParameter);
+	fprintf(stderr, "  Log: 3 messages written to stderr\n");
+}
+
+// ===========================================================================
 //  Main
 // ===========================================================================
 
@@ -609,6 +692,7 @@ int main(void) {
 	DemoArray();
 	DemoBodyState();
 	DemoMath();
+	DemoErrorLog();
 	DemoPerformance();
 
 	SEP();

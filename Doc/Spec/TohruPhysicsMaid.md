@@ -670,16 +670,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0170. Implement `SAT` debug visualization showing separating axes and contact features.
 
 #### 1.19 Collision Detection - Contact Manifold Generation
-- [ ] 0171. Implement `ContactManifold` structure with capacity for up to 4 contact points.
-- [ ] 0172. Implement `ContactManifold` reduction algorithms selecting most persistent points.
-- [ ] 0173. Implement `ContactPoint` structure with position, normal, penetration, and feature IDs.
-- [ ] 0174. Implement `ContactPoint` feature ID generation for feature pair identification.
-- [ ] 0175. Implement `ContactManifold` warm-starting using previous frame's contact points.
-- [ ] 0176. Implement `ContactManifold` clipping for face contacts generating multiple points.
-- [ ] 0177. Implement `ContactManifold` cache with per-body-pair lookup and invalidation.
-- [ ] 0178. Implement `ContactManifold` refresh logic for persistent contacts across frames.
-- [ ] 0179. Implement `ContactManifold` debugging visualization with normal arrows and point markers.
-- [ ] 0180. Implement `ContactManifold` serialization for network and save-state support.
+- [x] 0171. Implement `ContactManifold` structure with capacity for up to 4 contact points.
+- [x] 0172. Implement `ContactManifold` reduction algorithms selecting most persistent points.
+- [x] 0173. Implement `ContactPoint` structure with position, normal, penetration, and feature IDs.
+- [x] 0174. Implement `ContactPoint` feature ID generation for feature pair identification.
+- [x] 0175. Implement `ContactManifold` warm-starting using previous frame's contact points.
+- [x] 0176. Implement `ContactManifold` clipping for face contacts generating multiple points.
+- [x] 0177. Implement `ContactManifold` cache with per-body-pair lookup and invalidation.
+- [x] 0178. Implement `ContactManifold` refresh logic for persistent contacts across frames.
+- [x] 0179. Implement `ContactManifold` debugging visualization with normal arrows and point markers.
+- [x] 0180. Implement `ContactManifold` serialization for network and save-state support.
 
 #### 1.20 Collision Detection - Broad Phase Interface
 - [ ] 0181. Implement `BroadPhase` abstract interface with virtual functions for pair generation.
@@ -2872,54 +2872,54 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.1 GUI Core Architecture & Application Framework
 
-- [ ] 2001. Establish Slint project structure with CMake integration.
-- [ ] 2002. Configure Slint build system with C++ backend generation.
-- [ ] 2003. Implement application main entry point with event loop.
-- [ ] 2004. Design application state management (Model-View pattern).
-- [ ] 2005. Implement global application settings configuration.
-- [ ] 2006. Create application theming system (light/dark mode).
-- [ ] 2007. Implement window management (resize, fullscreen, minimize).
+- [x] 2001. Establish Slint project structure with CMake integration.
+- [x] 2002. Configure Slint build system with C++ backend generation.
+- [x] 2003. Implement application main entry point with event loop.
+- [x] 2004. Design application state management (Model-View pattern).
+- [x] 2005. Implement global application settings configuration.
+- [x] 2006. Create application theming system (light/dark mode).
+- [x] 2007. Implement window management (resize, fullscreen, minimize).
 - [ ] 2008. Create menu bar with File, View, Physics, Help menus.
 - [ ] 2009. Implement keyboard shortcut system.
-- [ ] 2010. Implement application lifecycle management (startup, shutdown).
+- [x] 2010. Implement application lifecycle management (startup, shutdown).
 
 #### 3.2 Main Window Layout & UI Components
 
-- [ ] 2011. Design main window split layout (viewport + panels).
-- [ ] 2012. Implement 3D viewport widget.
+- [x] 2011. Design main window split layout (viewport + panels).
+- [x] 2012. Implement 3D viewport widget.
 - [ ] 2013. Implement viewport toolbar (translate, rotate, scale tools).
-- [ ] 2014. Create simulation control panel (play, pause, step, reset).
-- [ ] 2015. Create time slider for simulation scrubbing.
-- [ ] 2016. Implement FPS counter display.
-- [ ] 2017. Create status bar with simulation statistics.
-- [ ] 2018. Implement collapsible sidebar panels.
+- [x] 2014. Create simulation control panel (play, pause, step, reset).
+- [x] 2015. Create time slider for simulation scrubbing.
+- [x] 2016. Implement FPS counter display.
+- [x] 2017. Create status bar with simulation statistics.
+- [x] 2018. Implement collapsible sidebar panels.
 - [ ] 2019. Create docking system for floating panels.
 - [ ] 2020. Implement panel state persistence.
 
 #### 3.3 Simulation Controls Panel
 
-- [ ] 2021. Implement Play button with icon and state toggle.
-- [ ] 2022. Implement Pause button with visual indicator.
-- [ ] 2023. Implement Step button (single frame advance).
-- [ ] 2024. Implement Reset button with confirmation dialog.
-- [ ] 2025. Create time scale slider (0.1x to 10x).
-- [ ] 2026. Implement gravity magnitude control with up/down buttons.
+- [x] 2021. Implement Play button with icon and state toggle.
+- [x] 2022. Implement Pause button with visual indicator.
+- [x] 2023. Implement Step button (single frame advance).
+- [x] 2024. Implement Reset button with confirmation dialog.
+- [x] 2025. Create time scale slider (0.1x to 10x).
+- [x] 2026. Implement gravity magnitude control with up/down buttons.
 - [ ] 2027. Create gravity direction controls (XYZ sliders).
-- [ ] 2028. Implement sub-step count control (1-16 steps).
-- [ ] 2029. Create solver iteration control (1-100 iterations).
+- [x] 2028. Implement sub-step count control (1-16 steps).
+- [x] 2029. Create solver iteration control (1-100 iterations).
 - [ ] 2030. Implement simulation warm-up control.
 
 #### 3.4 Physics Parameters Panel
 
-- [ ] 2031. Create gravity vector input with XYZ fields.
-- [ ] 2032. Implement global damping coefficient slider.
-- [ ] 2033. Create restitution coefficient global control.
-- [ ] 2034. Implement friction coefficient global control.
+- [x] 2031. Create gravity vector input with XYZ fields.
+- [x] 2032. Implement global damping coefficient slider.
+- [x] 2033. Create restitution coefficient global control.
+- [x] 2034. Implement friction coefficient global control.
 - [ ] 2035. Create solver tolerance input field.
-- [ ] 2036. Implement max velocity limit control.
+- [x] 2036. Implement max velocity limit control.
 - [ ] 2037. Create max angular velocity limit control.
 - [ ] 2038. Implement collision group bitmask configuration.
-- [ ] 2039. Create CCD toggle with threshold control.
+- [x] 2039. Create CCD toggle with threshold control.
 - [ ] 2040. Implement parameter presets save/load.
 
 #### 3.5 3D Viewport - Camera Controls
@@ -2927,23 +2927,23 @@ Defensive Programming --> Performance --> Safety
 - [ ] 2041. Implement orbit camera with mouse drag.
 - [ ] 2042. Implement pan camera with right mouse drag.
 - [ ] 2043. Implement zoom with mouse wheel.
-- [ ] 2044. Create camera position XYZ display.
+- [x] 2044. Create camera position XYZ display.
 - [ ] 2045. Implement camera look-at target control.
-- [ ] 2046. Create camera speed slider.
-- [ ] 2047. Implement orthogonal projection toggle.
-- [ ] 2048. Create camera reset to home view.
-- [ ] 2049. Implement viewport auto-rotation option.
+- [x] 2046. Create camera speed slider.
+- [x] 2047. Implement orthogonal projection toggle.
+- [x] 2048. Create camera reset to home view.
+- [x] 2049. Implement viewport auto-rotation option.
 - [ ] 2050. Create camera bookmarks system (save/load views).
 
 #### 3.6 3D Viewport - Rendering
 
-- [ ] 2051. Implement OpenGL context creation.
-- [ ] 2052. Implement OpenGL initialization and cleanup.
-- [ ] 2053. Create shader program compilation system.
-- [ ] 2054. Implement vertex buffer object management.
-- [ ] 2055. Implement index buffer object management.
+- [x] 2051. Implement OpenGL context creation.
+- [x] 2052. Implement OpenGL initialization and cleanup.
+- [x] 2053. Create shader program compilation system.
+- [x] 2054. Implement vertex buffer object management.
+- [x] 2055. Implement index buffer object management.
 - [ ] 2056. Create rendering pipeline for rigid bodies.
-- [ ] 2057. Implement wireframe rendering mode.
+- [x] 2057. Implement wireframe rendering mode.
 - [ ] 2058. Implement lighting system (ambient + directional).
 - [ ] 2059. Create material system (diffuse, specular, emissive).
 - [ ] 2060. Implement shadow mapping (optional quality).
@@ -2963,7 +2963,7 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.8 3D Viewport - Grid & Helpers
 
-- [ ] 2071. Implement ground plane grid rendering.
+- [x] 2071. Implement ground plane grid rendering.
 - [ ] 2072. Create axis indicator at origin.
 - [ ] 2073. Implement unit measurement overlay.
 - [ ] 2074. Create ruler tool for distance measurement.
@@ -2980,23 +2980,23 @@ Defensive Programming --> Performance --> Safety
 - [ ] 2082. Create selection rectangle (box selection).
 - [ ] 2083. Implement multi-selection with Ctrl+Click.
 - [ ] 2084. Create selection list panel.
-- [ ] 2085. Implement body property inspector.
-- [ ] 2086. Display position XYZ in inspector.
+- [x] 2085. Implement body property inspector.
+- [x] 2086. Display position XYZ in inspector.
 - [ ] 2087. Display rotation quaternion in inspector.
 - [ ] 2088. Display linear velocity in inspector.
 - [ ] 2089. Display angular velocity in inspector.
-- [ ] 2090. Display mass and inertia in inspector.
+- [x] 2090. Display mass in inspector.
 
 #### 3.10 Body Inspector - Editable Properties
 
-- [ ] 2091. Implement mass value editing.
-- [ ] 2092. Implement position XYZ editing.
+- [x] 2091. Implement mass value editing.
+- [x] 2092. Implement position XYZ editing.
 - [ ] 2093. Implement rotation quaternion editing.
-- [ ] 2094. Implement velocity XYZ editing.
+- [x] 2094. Implement velocity XYZ editing.
 - [ ] 2095. Implement angular velocity XYZ editing.
 - [ ] 2096. Create body type selector (Static/Dynamic/Kinematic).
-- [ ] 2097. Implement restitution coefficient editing.
-- [ ] 2098. Implement friction coefficient editing.
+- [x] 2097. Implement restitution coefficient editing.
+- [x] 2098. Implement friction coefficient editing.
 - [ ] 2099. Create shape type selector.
 - [ ] 2100. Implement shape dimension editing (radius, extents, etc.).
 
@@ -3028,10 +3028,10 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.13 Scene Management - Save/Load
 
-- [ ] 2121. Implement scene save to binary format.
-- [ ] 2122. Implement scene save to JSON format.
-- [ ] 2123. Implement scene load from binary format.
-- [ ] 2124. Implement scene load from JSON format.
+- [x] 2121. Implement scene save to binary format.
+- [x] 2122. Implement scene save to JSON format.
+- [x] 2123. Implement scene load from binary format.
+- [x] 2124. Implement scene load from JSON format.
 - [ ] 2125. Create scene browser with thumbnails.
 - [ ] 2126. Implement auto-save functionality.
 - [ ] 2127. Create version history for scenes.
@@ -3041,21 +3041,21 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.14 Physics Statistics Panel
 
-- [ ] 2131. Display total body count.
-- [ ] 2132. Display active body count.
-- [ ] 2133. Display sleeping body count.
+- [x] 2131. Display total body count.
+- [x] 2132. Display active body count.
+- [x] 2133. Display sleeping body count.
 - [ ] 2134. Display static body count.
 - [ ] 2135. Display kinematic body count.
 - [ ] 2136. Display constraint count.
-- [ ] 2137. Display contact count.
+- [x] 2137. Display contact count.
 - [ ] 2138. Display collision pairs per frame.
 - [ ] 2139. Display memory usage (arena + overhead).
-- [ ] 2140. Display simulation time per frame.
+- [x] 2140. Display simulation time per frame.
 
 #### 3.15 Performance Graphs
 
-- [ ] 2141. Implement real-time FPS graph.
-- [ ] 2142. Implement simulation time graph (ms/frame).
+- [x] 2141. Implement real-time FPS display.
+- [x] 2142. Implement simulation time display (ms/frame).
 - [ ] 2143. Implement broad-phase time graph.
 - [ ] 2144. Implement narrow-phase time graph.
 - [ ] 2145. Implement solver time graph.
@@ -3223,14 +3223,14 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.28 GUI - Theme & Styling System
 
-- [ ] 2271. Implement color scheme manager.
-- [ ] 2272. Create dark theme configuration.
-- [ ] 2273. Create light theme configuration.
+- [x] 2271. Implement color scheme manager.
+- [x] 2272. Create dark theme configuration.
+- [x] 2273. Create light theme configuration.
 - [ ] 2274. Implement custom color picker.
 - [ ] 2275. Create font size and family settings.
-- [ ] 2276. Implement icon set management.
-- [ ] 2277. Create spacing and padding configuration.
-- [ ] 2278. Implement border and shadow styles.
+- [x] 2276. Implement icon set management.
+- [x] 2277. Create spacing and padding configuration.
+- [x] 2278. Implement border and shadow styles.
 - [ ] 2279. Create animation duration settings.
 - [ ] 2280. Implement theme export/import.
 
@@ -3249,10 +3249,10 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.30 GUI - Error & Notification System
 
-- [ ] 2291. Implement toast notification system.
+- [x] 2291. Implement toast notification system.
 - [ ] 2292. Create error dialog with details.
 - [ ] 2293. Implement warning dialog with confirm.
-- [ ] 2294. Create success message display.
+- [x] 2294. Create success message display.
 - [ ] 2295. Implement progress bar for long operations.
 - [ ] 2296. Create log viewer panel.
 - [ ] 2297. Implement system tray notifications.
@@ -3275,7 +3275,7 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.32 Demo Launcher & Management
 
-- [ ] 2311. Implement demo launcher panel.
+- [x] 2311. Implement demo launcher panel.
 - [ ] 2312. Create demo thumbnails and descriptions.
 - [ ] 2313. Implement demo category filtering.
 - [ ] 2314. Create demo search functionality.
@@ -3314,9 +3314,9 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.35 GUI - Internationalization
 
-- [ ] 2341. Implement string localization system.
-- [ ] 2342. Create English language file.
-- [ ] 2343. Create Japanese language file.
+- [x] 2341. Implement string localization system.
+- [x] 2342. Create English language file.
+- [x] 2343. Create Japanese language file.
 - [ ] 2344. Implement locale detection.
 - [ ] 2345. Create language selector.
 - [ ] 2346. Implement date/time format localization.
@@ -3392,8 +3392,8 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.41 Demos - Real-Time Performance Monitoring
 
-- [ ] 2401. Implement FPS display overlay.
-- [ ] 2402. Create frame time display (ms).
+- [x] 2401. Implement FPS display overlay.
+- [x] 2402. Create frame time display (ms).
 - [ ] 2403. Implement memory usage display.
 - [ ] 2404. Create CPU usage display (per core).
 - [ ] 2405. Implement GPU usage display.
@@ -3405,7 +3405,7 @@ Defensive Programming --> Performance --> Safety
 
 #### 3.42 Demos - Simulation Recording & Playback
 
-- [ ] 2411. Implement simulation recording.
+- [x] 2411. Implement simulation recording.
 - [ ] 2412. Create playback controls (play, pause, seek).
 - [ ] 2413. Implement slow-motion playback.
 - [ ] 2414. Create frame-by-frame stepping.
