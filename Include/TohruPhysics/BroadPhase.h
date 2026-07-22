@@ -32,6 +32,9 @@
 #include <TohruPhysics/Geometry.h>
 #include <TohruPhysics/Vector3.h>
 
+// Forward declaration for threaded Evaluate (0187)
+typedef struct ThreadPool ThreadPool;
+
 #define BROADPHASE_MAX_BODIES 2048
 #define BROADPHASE_MAX_PAIRS (BROADPHASE_MAX_BODIES * 8)
 #define BROADPHASE_INVALID_INDEX (-1)
@@ -87,6 +90,14 @@ typedef struct {
 	int    AABBTestsPerFrame;
 } BroadPhaseStats;
 
+// 0185: Debug visualisation callback.
+// Called for each active body with its current and predicted AABBs.
+typedef void (*BroadPhaseDebugCallback)(int BodyIndex,
+                                        const AABB *CurrentAABB,
+                                        const AABB *PredictedAABB,
+                                        int BodyType,
+                                        void *UserData);
+
 // 0181: Main broad phase state
 typedef struct {
 	BroadPhaseBody   Bodies[BROADPHASE_MAX_BODIES];
@@ -124,8 +135,14 @@ void MiyabiBroadPhaseExpandAABB(BroadPhase *BP, int BodyIndex, Real DeltaTime);
 // 0184: Test whether two bodies can collide based on group filtering.
 int MiyabiBroadPhaseCanCollide(const BroadPhase *BP, int BodyA, int BodyB);
 
-// 0182–0183: Generate overlapping pairs for all active bodies.
+// 0182–0183: Generate overlapping pairs for all active bodies (single-threaded).
 void MiyabiBroadPhaseEvaluate(BroadPhase *BP, Real DeltaTime);
+
+// 0187: Generate overlapping pairs using a thread pool for parallel AABB
+// expansion and pair generation. Falls back to single-threaded if Pool is NULL.
+void MiyabiBroadPhaseEvaluateThreaded(BroadPhase *BP,
+                                      Real DeltaTime,
+                                      ThreadPool *Pool);
 
 // 0182–0183: Test whether two bodies' predicted AABBs overlap.
 int MiyabiBroadPhaseTestOverlap(const BroadPhase *BP, int BodyA, int BodyB);
@@ -142,3 +159,9 @@ void MiyabiBroadPhaseResetStats(BroadPhase *BP);
 // 0189: Validate pair generation — check for missed or duplicate pairs.
 // Returns number of issues found (0 = clean).
 int MiyabiBroadPhaseValidate(BroadPhase *BP);
+
+// 0185: Debug visualisation — iterate over all bodies and call the callback
+// with each body's current and predicted AABB.
+void MiyabiBroadPhaseDebugAABBs(BroadPhase *BP,
+                                BroadPhaseDebugCallback Callback,
+                                void *UserData);

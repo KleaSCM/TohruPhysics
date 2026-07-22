@@ -9,8 +9,10 @@
  * Email: KleaSCM@gmail.com
  */
 #include <TohruPhysics/BroadPhase.h>
+#include <TohruPhysics/ThreadPool.h>
 #include <TohruPhysics/Math.h>
 #include <string.h>
+#include <cstdlib>
 
 // 0181: Initialise broad phase — everything starts zeroed.
 // 0181: BroadPhase初期化 — すべてゼロ初期化ね。
@@ -261,4 +263,133 @@ int MiyabiBroadPhaseTestOverlap(const BroadPhase *BP, int BodyA, int BodyB) {
 	return SabinaAABBOverlaps(
 		&BP->Bodies[BodyA].PredictedAABB,
 		&BP->Bodies[BodyB].PredictedAABB);
+}
+
+// ===========================================================================
+//  0185: Debug visualisation
+// ===========================================================================
+
+void MiyabiBroadPhaseDebugAABBs(BroadPhase *BP,
+                                BroadPhaseDebugCallback Callback,
+                                void *UserData) {
+	if (!Callback) return;
+	for (int I = 0; I < BP->BodyCount; I++) {
+		Callback(I,
+		         &BP->Bodies[I].AABBBox,
+		         &BP->Bodies[I].PredictedAABB,
+		         BP->Bodies[I].BodyType,
+		         UserData);
+	}
+}
+
+// ===========================================================================
+//  0187: Threaded Evaluate helpers
+// ===========================================================================
+
+// Pair-generation task — each body I checks all J > I
+typedef struct {
+	BroadPhase *BP;
+	int        *LocalPairs;  // per-thread pair buffer
+	int         LocalCount;
+} PairGenCtx;
+
+static void PairGenTask(void *Arg, int ThreadIndex, int TaskIndex) {
+	PairGenCtx *Ctx = &((PairGenCtx *)Arg)[ThreadIndex];
+	BroadPhase *BP = Ctx->BP;
+	int BodyI = TaskIndex;
+	int *Pairs = Ctx->LocalPairs;
+	int *Count = &Ctx->LocalCount;
+
+	for (int J = BodyI + 1; J < BP->BodyCount; J++) {
+		if (!MiyabiBroadPhaseCanCollide(BP, BodyI, J)) continue;
+		const AABB *PredA = &BP->Bodies[BodyI].PredictedAABB;
+		const AABB *PredB = &BP->Bodies[J].PredictedAABB;
+		if (!SabinaAABBOverlaps(PredA, PredB)) continue;
+
+		int Idx = __atomic_fetch_add(Count, 1, __ATOMIC_RELAXED);
+		if (Idx * 2 + 1 < BROADPHASE_MAX_PAIRS * 2) {
+			Pairs[Idx * 2]     = BodyI;
+			Pairs[Idx * 2 + 1] = J;
+		}
+	}
+}
+
+// AABB expansion task for threaded Evaluate
+typedef struct { BroadPhase *BP; Real DT; } ExpandCtxBP;
+
+static void ExpandAABBTaskBP(void *Arg, int Ti, int Idx) {
+	(void)Ti;
+	ExpandCtxBP *C = (ExpandCtxBP *)Arg;
+	MiyabiBroadPhaseExpandAABB(C->BP, Idx, C->DT);
+}
+
+void MiyabiBroadPhaseEvaluateThreaded(BroadPhase *BP,
+                                      Real DeltaTime,
+                                      ThreadPool *Pool) {
+	if (!Pool) {
+		MiyabiBroadPhaseEvaluate(BP, DeltaTime);
+		return;
+	}
+
+	int NT = Pool->ThreadCount;
+
+	// Phase 1: Parallel AABB expansion
+	ExpandCtxBP ECtx;
+	ECtx.BP = BP;
+	ECtx.DT = DeltaTime;
+	ThreadPoolParFor(Pool, BP->BodyCount, ExpandAABBTaskBP, &ECtx);
+
+	// Phase 2: Allocate per-thread pair buffers
+	PairGenCtx *CtxArray = (PairGenCtx *)calloc(
+		(size_t)NT, sizeof(PairGenCtx));
+	for (int T = 0; T < NT; T++) {
+		CtxArray[T].BP = BP;
+		CtxArray[T].LocalPairs = (int *)calloc(
+			BROADPHASE_MAX_PAIRS * 2, sizeof(int));
+		CtxArray[T].LocalCount = 0;
+	}
+
+	// Phase 3: Parallel pair generation
+	// Each body task writes pairs (I, J) where J > I, ensuring no duplicates.
+	// Per-thread PairGenCtx is indexed by ThreadIndex.
+	ThreadPoolParFor(Pool, BP->BodyCount, PairGenTask, CtxArray);
+
+	// Phase 4: Merge per-thread buffers
+	int TotalPairs = 0;
+	for (int T = 0; T < NT; T++) {
+		int LC = CtxArray[T].LocalCount;
+		if (LC > BROADPHASE_MAX_PAIRS) LC = BROADPHASE_MAX_PAIRS;
+		int *Src = CtxArray[T].LocalPairs;
+		for (int I = 0; I < LC && TotalPairs < BROADPHASE_MAX_PAIRS; I++) {
+			BroadPhasePair *Pair = &BP->Pairs[TotalPairs++];
+			Pair->BodyA = Src[I * 2];
+			Pair->BodyB = Src[I * 2 + 1];
+			Pair->Persistent = WasPersistent(BP, Pair->BodyA, Pair->BodyB);
+		}
+		free(Src);
+	}
+	free(CtxArray);
+	BP->PairCount = TotalPairs;
+
+	// Phase 5: Update persistence cache
+	for (int I = 0; I < BP->PairCount && I < BROADPHASE_MAX_PAIRS; I++) {
+		BP->LastFramePairs[I * 2] = BP->Pairs[I].BodyA;
+		BP->LastFramePairs[I * 2 + 1] = BP->Pairs[I].BodyB;
+	}
+	BP->LastFramePairCount = BP->PairCount;
+
+	// Phase 6: Stats
+	int NewCount = 0, PersCount = 0;
+	for (int I = 0; I < BP->PairCount; I++) {
+		if (BP->Pairs[I].Persistent) PersCount++;
+		else NewCount++;
+	}
+	BP->Stats.BodyCount = BP->BodyCount;
+	BP->Stats.ActiveBodyCount = BP->BodyCount;
+	BP->Stats.PairCount = BP->PairCount;
+	BP->Stats.PersistentPairCount = PersCount;
+	BP->Stats.NewPairCount = NewCount;
+	BP->Stats.TotalPairsGenerated += BP->PairCount;
+	if (BP->PairCount > BP->Stats.MaxPairsPerFrame)
+		BP->Stats.MaxPairsPerFrame = BP->PairCount;
 }

@@ -83,6 +83,13 @@ target_sources(TohruPhysics PRIVATE
 	Collision/ContactManifold.cpp
 )
 
+# ThreadPool subsystem
+target_sources(TohruPhysics PRIVATE
+	ThreadPool/ThreadPool.cpp
+)
+
+target_link_libraries(TohruPhysics PRIVATE pthread)
+
 # BroadPhase subsystem
 target_sources(TohruPhysics PRIVATE
 	BroadPhase/BroadPhase.cpp

@@ -84,3 +84,8 @@ add_executable(TestSpatialGrid
 	Source/TestSpatialGrid.cpp
 )
 target_link_libraries(TestSpatialGrid PRIVATE TohruPhysics)
+
+add_executable(TestThreadPool
+	Source/TestThreadPool.cpp
+)
+target_link_libraries(TestThreadPool PRIVATE TohruPhysics)
