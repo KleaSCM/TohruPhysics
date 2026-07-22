@@ -99,3 +99,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	SpatialGrid/SpatialGrid.cpp
 )
+
+# BVH subsystem
+target_sources(TohruPhysics PRIVATE
+	BVH/BVH.cpp
+)

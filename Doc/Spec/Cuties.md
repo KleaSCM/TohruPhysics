@@ -1,104 +1,107 @@
+# Used Cuties
+Character names used as function prefixes in the codebase.
+Tick off names as they get used so we know when we're running low.
 
-Tilty Claret
-Kaede Johan Nouvelle
-Yuyu Shirai
-Miorine Rembran
-Mai Thi Yoshimura
-Euphyllia Magenta
-Sabina Fardin
-Tazusa Andou
-Ilia Coral
-Nagisa Aoi
-Kuyu Mashima
-Suletta Mercury
-Shiori Takatsuki
-Yuu Koito
-Anisphia Wynn Palettia
-Miriam Hildegard von Gropius
-Riri Hitotsuyanagi
-Misuzu Kawazoe
-Amane Ohtori
-Juri Arisugawa
-Fumi Futagawa
-Touko Nanami
-Renee Costa
-Miyako Kodama
-Sayaka Saeki
-Misha Jur
-Claire François
-Rae Taylor
-Papika
-Cocona
-Yayako
-Hakozaki Riko
-Kobayashi
-Tamao Suzumi
-Anthio Himemiya
-hizuma Hanazono
-Sumika Tachibana
-Tohru
-Kanoko Mamiya
-Mitsuki Yano
-Tarumi
-Hougetsu Shimamura
-Hime Shiraki
-Sakura Adachi
-Elma
-Iroha Sakayori
-Ilulu
-Iroha Sakayori
-Kano Yamanouchi
-Mahiru Kozuki
-Kaguya
-Anthio Himemiya
-Utena Tenjou
-Shizuma Hanazono
-Chikaru Minamoto
-Miyuki Rokujou
-Tomori Shikina
-Hikari Konohana
-Yaya Nanto
-Nagisa Kiryu
-Yukino Sakurai
-Akiko Himenokouji
-Haruka Takayama
-Yuu Sonoda
-Kotone Noda
-Shizuku Minami
-Kaede Ikeno
-Yuzu Aihara
-Mei Aihara
-Harumi Taniguchi
-Matsuri Mizusawa
-Himeko Inaba
-Chikane Himemiya
-Nozomi Kasaki
-Manatsu Muroto
-Kase Yui
-Yamada Yui
-Ayaka Nikaidou
-Shiho Izumi
-Aki Mizuguchi
-Kaori Yagi
-Ren Yamazaki
-Mari Tsutsui
-Himari Kino
-Yori Asanagi
-Mio Chibana
-Ushio Kazama
-Masaki Akemiya
-Tomoe Hachisuka
-Rei Hino
-Minako Aino
-Michiru Kaioh
-Haruka Tenou
-Kirika Akatsuki
-Shirabe Tsukuyomi
-Chris Yukine
-Maria Cadenzavna Eve
-Tsubasa Kazanari
-Kanade Amou
-Nanoha Takamachi
-Fate Testarossa
-Vivio Takamachi
-Rio Wesker
+## Used
+- [x] Tilty Claret (TiltyArray, TiltyGrid2D)
+- [x] Kaede Johan Nouvelle (KaedeTransform)
+- [x] Yuyu Shirai (YuyuArenaSet)
+- [x] Miorine Rembran (MiorineMatrix3x3)
+- [x] Mai Thi Yoshimura (MaiSanitize/Math)
+- [x] Euphyllia Magenta (EuphylliaQuaternion)
+- [x] Sabina Fardin (SabinaGeometry)
+- [x] Nagisa Aoi (NagisaCompare)
+- [x] Suletta Mercury (SulettaMath)
+- [x] Tohru (TohruArena/Log/ZeroBlock)
+- [x] Anisphia Wynn Palettia (AnisphiaMatrix4x4)
+- [x] Elma (ElmaArena)
+- [x] Yuu Koito (YuuClamp/Math)
+
+## Available
+- [x] Tazusa Andou
+- [ ] Ilia Coral
+- [ ] Kuyu Mashima
+- [ ] Shiori Takatsuki
+- [ ] Miriam Hildegard von Gropius
+- [ ] Riri Hitotsuyanagi
+- [ ] Misuzu Kawazoe
+- [ ] Amane Ohtori
+- [ ] Juri Arisugawa
+- [ ] Fumi Futagawa
+- [ ] Touko Nanami
+- [ ] Renee Costa
+- [ ] Miyako Kodama
+- [ ] Sayaka Saeki
+- [ ] Misha Jur
+- [ ] Claire François
+- [ ] Rae Taylor
+- [ ] Papika
+- [ ] Cocona
+- [ ] Yayako
+- [ ] Hakozaki Riko
+- [ ] Kobayashi
+- [ ] Tamao Suzumi
+- [ ] Anthio Himemiya
+- [ ] Shizuma Hanazono
+- [ ] Sumika Tachibana
+- [ ] Kanoko Mamiya
+- [ ] Mitsuki Yano
+- [ ] Tarumi
+- [ ] Hougetsu Shimamura
+- [ ] Hime Shiraki
+- [ ] Sakura Adachi
+- [ ] Iroha Sakayori
+- [ ] Ilulu
+- [ ] Kano Yamanouchi
+- [ ] Mahiru Kozuki
+- [ ] Kaguya
+- [ ] Utena Tenjou
+- [ ] Chikaru Minamoto
+- [ ] Miyuki Rokujou
+- [ ] Tomori Shikina
+- [ ] Hikari Konohana
+- [ ] Yaya Nanto
+- [ ] Nagisa Kiryu
+- [ ] Yukino Sakurai
+- [ ] Akiko Himenokouji
+- [ ] Haruka Takayama
+- [ ] Yuu Sonoda
+- [ ] Kotone Noda
+- [ ] Shizuku Minami
+- [ ] Kaede Ikeno
+- [ ] Yuzu Aihara
+- [ ] Mei Aihara
+- [ ] Harumi Taniguchi
+- [ ] Matsuri Mizusawa
+- [ ] Himeko Inaba
+- [ ] Chikane Himemiya
+- [ ] Nozomi Kasaki
+- [ ] Manatsu Muroto
+- [ ] Kase Yui
+- [ ] Yamada Yui
+- [ ] Ayaka Nikaidou
+- [ ] Shiho Izumi
+- [ ] Aki Mizuguchi
+- [ ] Kaori Yagi
+- [ ] Ren Yamazaki
+- [ ] Mari Tsutsui
+- [ ] Himari Kino
+- [ ] Yori Asanagi
+- [ ] Mio Chibana
+- [ ] Ushio Kazama
+- [ ] Masaki Akemiya
+- [ ] Tomoe Hachisuka
+- [ ] Rei Hino
+- [ ] Minako Aino
+- [ ] Michiru Kaioh
+- [ ] Haruka Tenou
+- [ ] Kirika Akatsuki
+- [ ] Shirabe Tsukuyomi
+- [ ] Chris Yukine
+- [ ] Maria Cadenzavna Eve
+- [ ] Tsubasa Kazanari
+- [ ] Kanade Amou
+- [ ] Nanoha Takamachi
+- [ ] Fate Testarossa
+- [ ] Vivio Takamachi
+- [ ] Rio Wesker

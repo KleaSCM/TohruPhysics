@@ -89,3 +89,8 @@ add_executable(TestThreadPool
 	Source/TestThreadPool.cpp
 )
 target_link_libraries(TestThreadPool PRIVATE TohruPhysics)
+
+add_executable(TestBVH
+	Source/TestBVH.cpp
+)
+target_link_libraries(TestBVH PRIVATE TohruPhysics)

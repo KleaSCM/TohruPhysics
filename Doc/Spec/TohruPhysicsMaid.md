@@ -706,16 +706,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0200. Implement `SpatialGrid` memory pooling for cell storage to avoid fragmentation.
 
 #### 1.22 Collision Detection - Bounding Volume Hierarchy (BVH)
-- [ ] 0201. Implement `BvhNode` structural data layouts packing structural children and bounding volumes.
-- [ ] 0202. Write `BvhBuildTree` processing logic utilizing top-down surface area heuristic (SAH) splits.
-- [ ] 0203. Write `BvhRebalance` optimization pipelines processing structural tree rotations dynamically.
-- [ ] 0204. Implement `BvhTraverseRay` coordinate search operations to handle intersection tracking requests.
-- [ ] 0205. Implement `BvhTraverseVolume` spatial verification engines detecting global overlap regions.
-- [ ] 0206. Write defensive linear serialization transformations converting node hierarchies into flat arrays.
-- [ ] 0207. Design spatial parent-pointer updates preventing node separation tracking breaks during refitting.
-- [ ] 0208. Implement fast incremental refitting methods to handle active real-time kinematic deformations.
-- [ ] 0209. Build compile-time layout limits restricting maximum tracking branch depths across nodes.
-- [ ] 0210. Implement dynamic leaf splitting systems checking item threshold counts defensively.
+- [x] 0201. Implement `BvhNode` structural data layouts packing structural children and bounding volumes.
+- [x] 0202. Write `BvhBuildTree` processing logic utilizing top-down surface area heuristic (SAH) splits.
+- [x] 0203. Write `BvhRebalance` optimization pipelines processing structural tree rotations dynamically.
+- [x] 0204. Implement `BvhTraverseRay` coordinate search operations to handle intersection tracking requests.
+- [x] 0205. Implement `BvhTraverseVolume` spatial verification engines detecting global overlap regions.
+- [x] 0206. Write defensive linear serialization transformations converting node hierarchies into flat arrays.
+- [x] 0207. Design spatial parent-pointer updates preventing node separation tracking breaks during refitting.
+- [x] 0208. Implement fast incremental refitting methods to handle active real-time kinematic deformations.
+- [x] 0209. Build compile-time layout limits restricting maximum tracking branch depths across nodes.
+- [x] 0210. Implement dynamic leaf splitting systems checking item threshold counts defensively.
 
 #### 1.23 Collision Detection - Sweep and Prune (SAP)
 - [ ] 0211. Implement `SapAxisList` structures managing structured endpoints for multi-coordinate sorting.
