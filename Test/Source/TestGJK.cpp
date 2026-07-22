@@ -112,7 +112,7 @@ static void TestEPASphereSphere(void) {
 	GJKEvaluate(&G, &A, SupportSphereWrapper, &B, SupportSphereWrapper);
 
 	EPAState E;
-	EPAInit(&E, &G, 1e-6, 64);
+	EPAInit(&E, &G, &A, SupportSphereWrapper, &B, SupportSphereWrapper, 1e-6, 64);
 	EPAEvaluate(&E, &A, SupportSphereWrapper, &B, SupportSphereWrapper);
 
 	TEST(E.PenetrationDepth > 0, "epa penetration positive");

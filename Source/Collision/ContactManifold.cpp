@@ -525,7 +525,7 @@ void ManifoldConvexConvex(const void *ShapeA, GJKSupportFn SupportA,
 	if (!G.Degenerate) return;
 
 	EPAState E;
-	EPAInit(&E, &G, (Real)1e-6f, 64);
+	EPAInit(&E, &G, ShapeA, SupportA, ShapeB, SupportB, (Real)1e-6f, 64);
 	EPAEvaluate(&E, ShapeA, SupportA, ShapeB, SupportB);
 
 	if (E.Converged && E.PenetrationDepth > REAL_ZERO) {

@@ -254,6 +254,38 @@ void GJKEvaluate(GJKState *State,
 		if (NewDistSq <= State->Tolerance * State->Tolerance) {
 			State->Converged = 1;
 			State->Degenerate = 1;
+
+			if (State->SimplexCount == 3) {
+				// Triangle with origin on its plane. Perturb the vertices
+				// slightly off-plane so the tetrahedron contains the origin.
+				Vector3 E1 = KannaVector3Sub(&State->Simplex[1].Point, &State->Simplex[0].Point);
+				Vector3 E2 = KannaVector3Sub(&State->Simplex[2].Point, &State->Simplex[0].Point);
+				Vector3 N = KannaVector3Cross(&E1, &E2);
+				Real NLen = KannaVector3Length(&N);
+				if (NLen > REAL_EPSILON) {
+					N = KannaVector3Scale(&N, 1.0 / NLen);
+					// Perturb triangle vertices slightly in +N direction
+					// 三角形の頂点を+N方向に微小にずらす
+					Real Eps = (Real)1e-6;
+					Vector3 Perturb = KannaVector3Scale(&N, Eps);
+					State->Simplex[0].Point = KannaVector3Add(&State->Simplex[0].Point, &Perturb);
+					State->Simplex[1].Point = KannaVector3Add(&State->Simplex[1].Point, &Perturb);
+					State->Simplex[2].Point = KannaVector3Add(&State->Simplex[2].Point, &Perturb);
+					// Get 4th vertex on the opposite side (-N)
+					// 反対側(-N方向)に4つ目の頂点を取る
+					Vector3 NegN = KannaVector3Scale(&N, -1.0);
+					Vector3 PA = SupportA(ShapeA, &NegN);
+					Vector3 NB = SupportB(ShapeB, &N);
+					Vector3 W4 = KannaVector3Sub(&PA, &NB);
+					State->Simplex[3].Point = W4;
+					State->Simplex[3].Direction = NegN;
+					State->SimplexCount = 4;
+				} else {
+					// Degenerate triangle (collinear or zero-area) — use EPAInit rebuild
+					State->SimplexCount = 3;
+				}
+			}
+
 			return;
 		}
 	}
@@ -353,43 +385,92 @@ static void EPAComputeFaceNormal(const Vector3 *V0, const Vector3 *V1,
 	}
 }
 
-// 0151: Initialise EPA from GJK's final tetrahedron
-void EPAInit(EPAState *E, const GJKState *G, Real Tolerance, int MaxIter) {
-	// Clear state
+// Check if the origin is on or very close to a face plane
+// 原点がどれかの面の上か非常に近いかをチェック
+static int OriginOnFace(const Vector3 Verts[4], int FaceIdx[4][3]) {
+	for (int F = 0; F < 4; F++) {
+		int I0 = FaceIdx[F][0], I1 = FaceIdx[F][1], I2 = FaceIdx[F][2];
+		Vector3 E1 = KannaVector3Sub(&Verts[I1], &Verts[I0]);
+		Vector3 E2 = KannaVector3Sub(&Verts[I2], &Verts[I0]);
+		Vector3 N = KannaVector3Cross(&E1, &E2);
+		Real Len = KannaVector3Length(&N);
+		if (NagisaIsZero(Len)) return 1;
+		N = KannaVector3Scale(&N, 1.0 / Len);
+		Real D = KannaVector3Dot(&N, &Verts[I0]);
+		if (D < REAL_ZERO) D = -D;
+		if (D < (Real)1e-6) return 1;
+	}
+	return 0;
+}
+
+// 0151: Initialise EPA from GJK's final simplex
+void EPAInit(EPAState *E, const GJKState *G,
+             const void *ShapeA, GJKSupportFn SupportA,
+             const void *ShapeB, GJKSupportFn SupportB,
+             Real Tolerance, int MaxIter) {
 	E->VertexCount = 0;
 	E->FaceCount = 0;
 	E->Iterations = 0;
 	E->MaxIterations = MaxIter > 0 ? MaxIter : EPA_MAX_ITERATIONS;
-	E->Tolerance = Tolerance > REAL_ZERO ? Tolerance : (Real)1e-6;
+	E->Tolerance = Tolerance > REAL_ZERO ? Tolerance : (Real)1e-3;
 	E->Converged = 0;
 	E->PenetrationDepth = 0;
 	E->ContactNormal = KannaVector3Make(0, 1, 0);
 	E->ContactPoint = KannaVector3Zero();
 	E->Barycentric[0] = E->Barycentric[1] = E->Barycentric[2] = 1.0/3.0;
 
-	// Copy GJK tetrahedron vertices
+	// Copy GJK simplex vertices
 	int SV = G->SimplexCount < 4 ? G->SimplexCount : 4;
-	for (int I = 0; I < SV; I++) {
-		E->Vertices[I] = G->Simplex[I].Point;
-	}
-	E->VertexCount = SV;
+	Vector3 V[4];
 
-	if (SV < 4) {
-		// No tetrahedron — can't expand. Use GJK distance.
-		// 四面体がない — 拡張できない。GJK距離を使う。
+	// Check if the GJK has a proper tetrahedron (4 vertices, origin inside)
+	int FaceIdx[4][3] = {{0,1,2},{0,2,3},{0,3,1},{1,3,2}};
+	int NeedRebuild = 0;
+	if (SV >= 4) {
+		for (int I = 0; I < 4; I++) V[I] = G->Simplex[I].Point;
+		NeedRebuild = OriginOnFace(V, FaceIdx);
+	} else {
+		NeedRebuild = 1;
+	}
+
+	if (NeedRebuild) {
+		// Build a balanced tetrahedron using 4 support points.
+		// 原点が面上にある場合、4つのサポート点でバランスの取れた四面体を構築。
+		Vector3 Dir[4] = {
+			KannaVector3Make(1, 1, 1),
+			KannaVector3Make(1, -1, -1),
+			KannaVector3Make(-1, 1, -1),
+			KannaVector3Make(-1, -1, 1)
+		};
+		for (int I = 0; I < 4; I++) {
+			Dir[I] = KannaVector3Normalize(&Dir[I]);
+			Vector3 NegDir = KannaVector3Scale(&Dir[I], -1.0);
+			Vector3 PA = SupportA(ShapeA, &Dir[I]);
+			Vector3 NB = SupportB(ShapeB, &NegDir);
+			V[I] = KannaVector3Sub(&PA, &NB);
+		}
+		E->VertexCount = 4;
+	} else {
+		E->VertexCount = SV;
+	}
+
+	// Copy vertices into EPA state
+	for (int I = 0; I < E->VertexCount; I++) {
+		E->Vertices[I] = V[I];
+	}
+
+	if (E->VertexCount < 4) {
 		E->Converged = 1;
 		E->PenetrationDepth = SulettaSqrt(G->DistanceSq);
 		return;
 	}
 
 	// Build initial 4 faces of the tetrahedron
-	// 四面体の4面を構築
-	int TetraFaces[4][3] = {{0,1,2},{0,2,3},{0,3,1},{1,3,2}};
 	for (int F = 0; F < 4; F++) {
 		EPAFace *Face = &E->Faces[E->FaceCount++];
-		Face->Indices[0] = TetraFaces[F][0];
-		Face->Indices[1] = TetraFaces[F][1];
-		Face->Indices[2] = TetraFaces[F][2];
+		Face->Indices[0] = FaceIdx[F][0];
+		Face->Indices[1] = FaceIdx[F][1];
+		Face->Indices[2] = FaceIdx[F][2];
 		Face->Valid = 1;
 		EPAComputeFaceNormal(
 			&E->Vertices[Face->Indices[0]],
@@ -398,6 +479,21 @@ void EPAInit(EPAState *E, const GJKState *G, Real Tolerance, int MaxIter) {
 			&Face->Normal);
 		Face->Distance = KannaVector3Dot(&Face->Normal, &E->Vertices[Face->Indices[0]]);
 		if (Face->Distance < REAL_ZERO) Face->Distance = -Face->Distance;
+	}
+
+	// Check each face: if the opposite vertex is on the normal side,
+	// the normal points inward (toward interior). Flip it.
+	// 各面をチェック: 反対側の頂点が法線側にあるなら法線は内向き。反転する。
+	for (int F = 0; F < 4; F++) {
+		int I0 = FaceIdx[F][0], I1 = FaceIdx[F][1], I2 = FaceIdx[F][2];
+		int Opp = 6 - I0 - I1 - I2; // 0+1+2+3 - A - B - C
+		Vector3 ToOpp = KannaVector3Sub(&E->Vertices[Opp], &E->Vertices[I0]);
+		Real DotOpp = KannaVector3Dot(&E->Faces[F].Normal, &ToOpp);
+		if (DotOpp > REAL_ZERO) {
+			// Opposite vertex is on normal side → flip to point outward
+			// 反対側頂点が法線側 → 外向きに反転
+			E->Faces[F].Normal = KannaVector3Scale(&E->Faces[F].Normal, -1.0);
+		}
 	}
 }
 

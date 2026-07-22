@@ -339,24 +339,25 @@ static void DemoGJKSAT(void) {
 	fprintf(stderr, "  GJK: sphere dist=%.1f  (converged=%d)\n",
 		Dist, G.Converged);
 
-	// GJK: overlapping spheres → EPA
-	CB.Data[0] = 3.0;
-	Sphere SC = SabinaSphereMake(&CB, 2.0);
+	// GJK: overlapping spheres → EPA (non-collinear centers to avoid degenerate GJK simplex)
+	Vector3 CCO = KannaVector3Make(2.9, 0.1, 0.0);
+	Sphere SC = SabinaSphereMake(&CCO, 2.0);
 	GJKState G2;
 	GJKInit(&G2, &InitDir, &SA, SupportSphereWrap, &SC, SupportSphereWrap, 1e-6, 32);
 	GJKEvaluate(&G2, &SA, SupportSphereWrap, &SC, SupportSphereWrap);
-	fprintf(stderr, "  GJK: overlapping: degenerate=%d\n", G2.Degenerate);
+	fprintf(stderr, "  GJK: overlapping: degenerate=%d simplexCount=%d distSq=%.6f\n",
+		G2.Degenerate, G2.SimplexCount, G2.DistanceSq);
 
-	if (G2.Degenerate) {
-		EPAState E;
-		EPAInit(&E, &G2, 1e-6, 64);
-		EPAEvaluate(&E, &SA, SupportSphereWrap, &SC, SupportSphereWrap);
-		fprintf(stderr, "  EPA: pen=%.2f  normal=(%.2f,%.2f,%.2f)\n",
-			E.PenetrationDepth,
-			E.ContactNormal.Data[0], E.ContactNormal.Data[1],
-			E.ContactNormal.Data[2]);
-		fprintf(stderr, "  EPA: bary=(%.2f,%.2f,%.2f)\n",
-			E.Barycentric[0], E.Barycentric[1], E.Barycentric[2]);
+	EPAState E;
+	EPAInit(&E, &G2, &SA, SupportSphereWrap, &SC, SupportSphereWrap, 1e-3, 64);
+	EPAEvaluate(&E, &SA, SupportSphereWrap, &SC, SupportSphereWrap);
+	fprintf(stderr, "  EPA: pen=%.3f  normal=(%.4f,%.4f,%.4f)  converged=%d\n",
+		E.PenetrationDepth,
+		E.ContactNormal.Data[0], E.ContactNormal.Data[1],
+		E.ContactNormal.Data[2], E.Converged);
+	if (E.VertexCount > 0) {
+		fprintf(stderr, "  EPA: vertices=%d  faces=%d\n",
+			E.VertexCount, E.FaceCount);
 	}
 
 	// SAT: OBB-OBB

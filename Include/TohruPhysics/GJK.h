@@ -116,9 +116,9 @@ Vector3 GJKClosestPointOnSimplex(const GJKState *State);
 //  to find the closest face → penetration depth + contact normal + point.
 // ===========================================================================
 
-#define EPA_MAX_ITERATIONS 64
-#define EPA_MAX_FACES 128
-#define EPA_MAX_VERTICES 64
+#define EPA_MAX_ITERATIONS 256
+#define EPA_MAX_FACES 256
+#define EPA_MAX_VERTICES 128
 
 typedef struct {
 	Vector3 Normal;     // face normal (outward)
@@ -145,7 +145,10 @@ typedef struct {
 } EPAState;
 
 // 0151: Initialise EPA from GJK's final simplex
-void EPAInit(EPAState *E, const GJKState *G, Real Tolerance, int MaxIter);
+void EPAInit(EPAState *E, const GJKState *G,
+             const void *ShapeA, GJKSupportFn SupportA,
+             const void *ShapeB, GJKSupportFn SupportB,
+             Real Tolerance, int MaxIter);
 
 // 0152–0159: Run EPA iteration loop
 void EPAEvaluate(EPAState *E,
