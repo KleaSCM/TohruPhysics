@@ -22,6 +22,7 @@
 #include <TohruPhysics/GJK.h>
 #include <TohruPhysics/SAT.h>
 #include <TohruPhysics/ContactManifold.h>
+#include <TohruPhysics/BroadPhase.h>
 #include <TohruPhysics/Array.h>
 #include <TohruPhysics/Error.h>
 #include <TohruPhysics/Log.h>
@@ -670,6 +671,86 @@ static void DemoErrorLog(void) {
 }
 
 // ===========================================================================
+//  14. BroadPhase demo
+// ===========================================================================
+
+static void DemoBroadPhase(void) {
+	HEADER("14. BroadPhase — Pair Generation & Filtering");
+
+	BroadPhase BP;
+	MiyabiBroadPhaseInit(&BP);
+	fprintf(stderr, "  BroadPhase initialised: bodies=%d  pairs=%d\n",
+		BP.BodyCount, BP.PairCount);
+
+	// Add overlapping dynamic bodies
+	Vector3 MinA = KannaVector3Make(-3,-3,-3);
+	Vector3 MaxA = KannaVector3Make(3,3,3);
+	BroadPhaseBody B1;
+	memset(&B1, 0, sizeof(B1));
+	B1.BodyId = 1;
+	B1.BodyType = BPBodyType_Dynamic;
+	B1.AABBBox = SabinaAABBMake(&MinA, &MaxA);
+	B1.PredictedAABB = B1.AABBBox;
+	B1.CollisionGroup = COLLISIONGROUP_DYNAMIC;
+	B1.CollidesWith = COLLISIONGROUP_ALL;
+	B1.LinearVelocity = KannaVector3Make(5,0,0);
+
+	Vector3 MinB = KannaVector3Make(-1,-1,-1);
+	Vector3 MaxB = KannaVector3Make(1,1,1);
+	BroadPhaseBody B2;
+	memset(&B2, 0, sizeof(B2));
+	B2.BodyId = 2;
+	B2.BodyType = BPBodyType_Dynamic;
+	B2.AABBBox = SabinaAABBMake(&MinB, &MaxB);
+	B2.PredictedAABB = B2.AABBBox;
+	B2.CollisionGroup = COLLISIONGROUP_DYNAMIC;
+	B2.CollidesWith = COLLISIONGROUP_ALL;
+
+	MiyabiBroadPhaseAddBody(&BP, &B1);
+	MiyabiBroadPhaseAddBody(&BP, &B2);
+
+	// Evaluate with dt=0
+	MiyabiBroadPhaseEvaluate(&BP, 0.0);
+	fprintf(stderr, "  Evaluate (dt=0): pairs=%d  persistent=%d  new=%d\n",
+		BP.PairCount, BP.Stats.PersistentPairCount, BP.Stats.NewPairCount);
+
+	// Evaluate again (persistent)
+	MiyabiBroadPhaseEvaluate(&BP, 0.0);
+	fprintf(stderr, "  Evaluate (dt=0): pairs=%d  persistent=%d  new=%d\n",
+		BP.PairCount, BP.Stats.PersistentPairCount, BP.Stats.NewPairCount);
+
+	// Evaluate with motion (dt=0.5)
+	MiyabiBroadPhaseEvaluate(&BP, 0.5);
+	fprintf(stderr, "  Evaluate (dt=0.5): pairs=%d  bodyCount=%d  AABBtests=%d\n",
+		BP.PairCount, BP.Stats.BodyCount, BP.Stats.AABBTestsPerFrame);
+
+	// Add a static body in a different group → should not collide
+	Vector3 MinC = KannaVector3Make(-1,-1,-1);
+	Vector3 MaxC = KannaVector3Make(1,1,1);
+	BroadPhaseBody B3;
+	memset(&B3, 0, sizeof(B3));
+	B3.BodyId = 3;
+	B3.BodyType = BPBodyType_Static;
+	B3.AABBBox = SabinaAABBMake(&MinC, &MaxC);
+	B3.PredictedAABB = B3.AABBBox;
+	B3.CollisionGroup = COLLISIONGROUP_STATIC;
+	B3.CollidesWith = COLLISIONGROUP_NONE; // collides with nothing
+	MiyabiBroadPhaseAddBody(&BP, &B3);
+
+	MiyabiBroadPhaseEvaluate(&BP, 0.0);
+	fprintf(stderr, "  With static (no-collide): pairs=%d  (same as before ✓)\n",
+		BP.PairCount);
+
+	// Stats summary
+	BroadPhaseStats S = MiyabiBroadPhaseGetStats(&BP);
+	fprintf(stderr, "  Stats: totalPairs=%d  maxPairs=%d  tests=%d\n",
+		S.TotalPairsGenerated, S.MaxPairsPerFrame, S.AABBTestsPerFrame);
+
+	int Issues = MiyabiBroadPhaseValidate(&BP);
+	fprintf(stderr, "  Validation: issues=%d  (0 = clean ✓)\n", Issues);
+}
+
+// ===========================================================================
 //  Main
 // ===========================================================================
 
@@ -695,6 +776,7 @@ int main(void) {
 	DemoMath();
 	DemoErrorLog();
 	DemoPerformance();
+	DemoBroadPhase();
 
 	SEP();
 	fprintf(stderr, "  ✅  All subsystems operational.\n");

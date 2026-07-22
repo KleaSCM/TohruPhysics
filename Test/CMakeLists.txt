@@ -74,3 +74,8 @@ add_executable(TestContactManifold
 	Source/TestContactManifold.cpp
 )
 target_link_libraries(TestContactManifold PRIVATE TohruPhysics)
+
+add_executable(TestBroadPhase
+	Source/TestBroadPhase.cpp
+)
+target_link_libraries(TestBroadPhase PRIVATE TohruPhysics)

@@ -682,16 +682,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0180. Implement `ContactManifold` serialization for network and save-state support.
 
 #### 1.20 Collision Detection - Broad Phase Interface
-- [ ] 0181. Implement `BroadPhase` abstract interface with virtual functions for pair generation.
-- [ ] 0182. Implement `BroadPhase` body addition, removal, and update operations.
-- [ ] 0183. Implement `BroadPhase` AABB expansion with motion prediction to avoid missed collisions.
-- [ ] 0184. Implement `BroadPhase` pair filtering using collision group bitmasks.
+- [x] 0181. Implement `BroadPhase` abstract interface (struct-based; no virtual functions — `-fno-rtti`).
+- [x] 0182. Implement `BroadPhase` body addition, removal, and update operations.
+- [x] 0183. Implement `BroadPhase` AABB expansion with motion prediction to avoid missed collisions.
+- [x] 0184. Implement `BroadPhase` pair filtering using collision group bitmasks.
 - [ ] 0185. Implement `BroadPhase` debug visualization displaying all AABBs with color coding.
-- [ ] 0186. Implement `BroadPhase` performance metrics for tuning and analysis.
+- [x] 0186. Implement `BroadPhase` performance metrics for tuning and analysis.
 - [ ] 0187. Implement `BroadPhase` multi-threaded pair generation using work-stealing.
-- [ ] 0188. Implement `BroadPhase` pair caching to avoid regenerating persistent pairs.
-- [ ] 0189. Implement `BroadPhase` validation checking for missed or duplicate pairs.
-- [ ] 0190. Implement `BroadPhase` statistics (pair count, update time, memory usage).
+- [x] 0188. Implement `BroadPhase` pair caching to avoid regenerating persistent pairs.
+- [x] 0189. Implement `BroadPhase` validation checking for missed or duplicate pairs.
+- [x] 0190. Implement `BroadPhase` statistics (pair count, update time, memory usage).
 
 #### 1.21 Collision Detection - Spatial Grid Implementation
 - [ ] 0191. Implement `SpatialGrid` with uniform cell size and 3D hashing function.

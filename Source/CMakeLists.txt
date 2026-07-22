@@ -82,3 +82,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	Collision/ContactManifold.cpp
 )
+
+# BroadPhase subsystem
+target_sources(TohruPhysics PRIVATE
+	BroadPhase/BroadPhase.cpp
+)
