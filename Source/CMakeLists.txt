@@ -109,3 +109,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	SAP/SAP.cpp
 )
+
+# Island subsystem
+target_sources(TohruPhysics PRIVATE
+	Island/Island.cpp
+)

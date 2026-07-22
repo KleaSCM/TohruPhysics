@@ -730,16 +730,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0220. Build boundary limit checking routines to manage extreme coordinate mapping extremes safely.
 
 #### 1.24 Simulation Islands & Activation Management
-- [ ] 0221. Implement `SimulationIsland` structural groupings to organize interacting bodies neatly.
-- [ ] 0222. Write `IslandBuildGraph` graph creation routines tracking active physical interactions.
-- [ ] 0223. Write `IslandFindComponents` traversal engines separating independent simulation zones cleanly.
-- [ ] 0224. Implement `IslandActivate` initialization processes to wake sleeping configurations safely.
-- [ ] 0225. Implement `IslandDeactivate` threshold checking routines evaluating low-energy systems.
-- [ ] 0226. Write deep sleep qualification calculations checking joint tension states precisely.
-- [ ] 0227. Implement fast spatial connection mapping tables utilizing flat contiguous index arrays.
-- [ ] 0228. Write defensive structural graph split logic handling detached body configurations.
-- [ ] 0229. Implement structural island merging mechanics to capture fast multiple-body impacts.
-- [ ] 0230. Build internal load-balancing systems to route isolated islands across threads.
+- [x] 0221. Implement `SimulationIsland` structural groupings to organize interacting bodies neatly.
+- [x] 0222. Write `IslandBuildGraph` graph creation routines tracking active physical interactions.
+- [x] 0223. Write `IslandFindComponents` traversal engines separating independent simulation zones cleanly.
+- [x] 0224. Implement `IslandActivate` initialization processes to wake sleeping configurations safely.
+- [x] 0225. Implement `IslandDeactivate` threshold checking routines evaluating low-energy systems.
+- [x] 0226. Write deep sleep qualification calculations checking joint tension states precisely.
+- [x] 0227. Implement fast spatial connection mapping tables utilizing flat contiguous index arrays.
+- [x] 0228. Write defensive structural graph split logic handling detached body configurations.
+- [x] 0229. Implement structural island merging mechanics to capture fast multiple-body impacts.
+- [x] 0230. Build internal load-balancing systems to route isolated islands across threads.
 
 #### 1.25 Rigid Body Dynamics - Numerical Integration
 - [ ] 0231. Implement `IntegrateVelocities` pipelines applying accumulated forces using Euler steps.

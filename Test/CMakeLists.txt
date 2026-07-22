@@ -99,3 +99,8 @@ add_executable(TestSAP
 	Source/TestSAP.cpp
 )
 target_link_libraries(TestSAP PRIVATE TohruPhysics)
+
+add_executable(TestIsland
+	Source/TestIsland.cpp
+)
+target_link_libraries(TestIsland PRIVATE TohruPhysics)

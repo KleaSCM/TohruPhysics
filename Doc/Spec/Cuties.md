@@ -20,7 +20,7 @@ Tick off names as they get used so we know when we're running low.
 ## Available
 - [x] Tazusa Andou
 - [x] Ilia Coral
-- [ ] Kuyu Mashima
+- [x] Kuyu Mashima
 - [ ] Shiori Takatsuki
 - [ ] Miriam Hildegard von Gropius
 - [ ] Riri Hitotsuyanagi
