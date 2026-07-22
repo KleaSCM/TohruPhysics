@@ -116,8 +116,15 @@ static void WorkerMain(ThreadPool *Pool, int Ti) {
 		// 1) Pop from own deque (LIFO — best locality)
 		int TaskIdx;
 		if (DequePopBottom(&Pool->Deques[Ti], &TaskIdx)) {
+			int64_t MyBatch = LoadR(&Pool->BatchId);
+			__atomic_add_fetch(&Pool->ActiveTasks, 1, __ATOMIC_RELAXED);
 			Pool->CurrentFunc(Pool->CurrentArg, Ti, TaskIdx);
-			__atomic_add_fetch(&Pool->TasksCompleted, 1, __ATOMIC_RELEASE);
+			// Only count if this task belongs to the current batch.
+			// If BatchId changed, this task was from a previous batch
+			// and was already counted — skip stale increment.
+			if (LoadR(&Pool->BatchId) == MyBatch)
+				__atomic_add_fetch(&Pool->TasksCompleted, 1, __ATOMIC_RELEASE);
+			__atomic_sub_fetch(&Pool->ActiveTasks, 1, __ATOMIC_RELEASE);
 			continue;
 		}
 
@@ -128,8 +135,12 @@ static void WorkerMain(ThreadPool *Pool, int Ti) {
 			Victim = (Victim + 1) % Pool->ThreadCount;
 
 		if (DequeSteal(&Pool->Deques[Victim], &TaskIdx)) {
+			int64_t MyBatch = LoadR(&Pool->BatchId);
+			__atomic_add_fetch(&Pool->ActiveTasks, 1, __ATOMIC_RELAXED);
 			Pool->CurrentFunc(Pool->CurrentArg, Ti, TaskIdx);
-			__atomic_add_fetch(&Pool->TasksCompleted, 1, __ATOMIC_RELEASE);
+			if (LoadR(&Pool->BatchId) == MyBatch)
+				__atomic_add_fetch(&Pool->TasksCompleted, 1, __ATOMIC_RELEASE);
+			__atomic_sub_fetch(&Pool->ActiveTasks, 1, __ATOMIC_RELEASE);
 			continue;
 		}
 
@@ -203,6 +214,10 @@ void ThreadPoolParFor(ThreadPool *Pool,
 	// increment TasksCompleted. If we set these after pushing, a worker
 	// could consume a task using stale state and the increment would be
 	// lost when TasksCompleted is reset.
+	// BatchId prevents stale increments: workers read BatchId at the
+	// start of each iteration; if it changes during execution, the
+	// increment is for a previous batch and is skipped.
+	__atomic_add_fetch(&Pool->BatchId, 1, __ATOMIC_RELEASE);
 	Pool->CurrentFunc = Func;
 	Pool->CurrentArg = Arg;
 	Store(&Pool->TasksCompleted, 0);
@@ -231,6 +246,12 @@ void ThreadPoolParFor(ThreadPool *Pool,
 		if (!Stolen)
 			std::this_thread::yield();
 	}
+
+	// Drain: wait for all workers to finish their current tasks.
+	// This ensures user-visible side effects (e.g., Sum accumulators)
+	// are fully committed before ParFor returns.
+	while (__atomic_load_n(&Pool->ActiveTasks, __ATOMIC_ACQUIRE) > 0)
+		std::this_thread::yield();
 }
 
 // ---------------------------------------------------------------------------
@@ -251,6 +272,7 @@ void ThreadPoolParForSteal(ThreadPool *Pool,
 	Pool->CurrentFunc = Func;
 	Pool->CurrentArg = Arg;
 	Store(&Pool->TasksCompleted, 0);
+	__atomic_add_fetch(&Pool->BatchId, 1, __ATOMIC_RELEASE);
 
 	// Spread fine-grained chunks across deques for work-stealing.
 	// Round-robin distribution ensures no deque gets all the tasks.
@@ -277,4 +299,8 @@ void ThreadPoolParForSteal(ThreadPool *Pool,
 		if (!Stolen)
 			std::this_thread::yield();
 	}
+
+	// Drain: wait for all workers to finish their current tasks.
+	while (__atomic_load_n(&Pool->ActiveTasks, __ATOMIC_ACQUIRE) > 0)
+		std::this_thread::yield();
 }

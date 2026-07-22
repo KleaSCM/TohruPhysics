@@ -339,10 +339,11 @@ void MiyabiBroadPhaseEvaluateThreaded(BroadPhase *BP,
 	ECtx.DT = DeltaTime;
 	ThreadPoolParFor(Pool, BP->BodyCount, ExpandAABBTaskBP, &ECtx);
 
-	// Phase 2: Allocate per-thread pair buffers
+	// Phase 2: Allocate per-thread pair buffers (NT + 1 slots for
+	// NT worker threads + main thread at index NT)
 	PairGenCtx *CtxArray = (PairGenCtx *)calloc(
-		(size_t)NT, sizeof(PairGenCtx));
-	for (int T = 0; T < NT; T++) {
+		(size_t)(NT + 1), sizeof(PairGenCtx));
+	for (int T = 0; T <= NT; T++) {
 		CtxArray[T].BP = BP;
 		CtxArray[T].LocalPairs = (int *)calloc(
 			BROADPHASE_MAX_PAIRS * 2, sizeof(int));
@@ -356,7 +357,7 @@ void MiyabiBroadPhaseEvaluateThreaded(BroadPhase *BP,
 
 	// Phase 4: Merge per-thread buffers
 	int TotalPairs = 0;
-	for (int T = 0; T < NT; T++) {
+	for (int T = 0; T <= NT; T++) {
 		int LC = CtxArray[T].LocalCount;
 		if (LC > BROADPHASE_MAX_PAIRS) LC = BROADPHASE_MAX_PAIRS;
 		int *Src = CtxArray[T].LocalPairs;

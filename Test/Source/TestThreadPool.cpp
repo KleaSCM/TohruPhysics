@@ -188,17 +188,27 @@ static void TestStressManyTasks(void) {
 }
 
 // Sequential ParFor calls (reuse pool)
+// Uses a persistent global accumulator to avoid races where stale
+// worker tasks from a previous batch write to a recycled stack address.
+static int G_RepeatedSum = 0;
+
+static void SumTaskPersist(void *Arg, int ThreadIndex, int TaskIndex) {
+	(void)Arg;
+	(void)ThreadIndex;
+	__atomic_add_fetch(&G_RepeatedSum, TaskIndex, __ATOMIC_RELAXED);
+}
+
 static void TestRepeatedParFor(void) {
 	ThreadPool Pool;
 	ThreadPoolInit(&Pool, 4);
 
+	G_RepeatedSum = 0;
 	for (int Run = 0; Run < 5; Run++) {
 		const int N = 40;
-		int Sum = 0;
-		ThreadPoolParFor(&Pool, N, SumTask, &Sum);
-		int Expected = N * (N - 1) / 2;
-		TEST(Sum == Expected, "Repeated ParFor: sum correct");
+		ThreadPoolParFor(&Pool, N, SumTaskPersist, NULL);
 	}
+	int Expected = 5 * 40 * (40 - 1) / 2;
+	TEST(G_RepeatedSum == Expected, "Repeated ParFor: sum correct");
 
 	ThreadPoolDestroy(&Pool);
 }

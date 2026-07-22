@@ -33,7 +33,8 @@
 #include <TohruPhysics/Vector3.h>
 
 // Forward declaration for threaded Evaluate (0187)
-typedef struct ThreadPool ThreadPool;
+// Full definition in ThreadPool.h
+struct ThreadPool;
 
 #define BROADPHASE_MAX_BODIES 2048
 #define BROADPHASE_MAX_PAIRS (BROADPHASE_MAX_BODIES * 8)

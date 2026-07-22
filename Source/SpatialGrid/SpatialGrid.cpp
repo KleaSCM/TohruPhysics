@@ -90,8 +90,10 @@ void SuzuSpatialGridFreeCell(SuzuSpatialGrid *Grid, int CellIndex) {
 void SuzuSpatialGridDestroy(SuzuSpatialGrid *Grid) {
 	free(Grid->Buckets);
 	free(Grid->Cells);
+	free(Grid->BucketLocks);
 	Grid->Buckets = NULL;
 	Grid->Cells = NULL;
+	Grid->BucketLocks = NULL;
 	Grid->PoolSize = 0;
 	Grid->BucketCount = 0;
 }
@@ -125,11 +127,14 @@ void SuzuSpatialGridInit(SuzuSpatialGrid *Grid,
 	Grid->BucketCount = BC;
 	Grid->BucketMask = BC - 1;
 
-	// Allocate bucket array and cell pool on the heap (arena-free for now)
+	// Allocate bucket array
 	Grid->Buckets = (int *)calloc((size_t)BC, sizeof(int));
 	for (int I = 0; I < BC; I++) {
 		Grid->Buckets[I] = SUZU_INVALID_INDEX;
 	}
+
+	// 0195: Per-bucket spinlocks
+	Grid->BucketLocks = (int *)calloc((size_t)BC, sizeof(int));
 
 	if (PoolSize < 1) PoolSize = SUZU_DEFAULT_POOLSIZE;
 	Grid->PoolSize = PoolSize;
@@ -356,5 +361,211 @@ SuzuStats SuzuSpatialGridGetStats(SuzuSpatialGrid *Grid) {
 
 void SuzuSpatialGridResetStats(SuzuSpatialGrid *Grid) {
 	memset(&Grid->Stats, 0, sizeof(SuzuStats));
+	Grid->Stats.PoolCapacity = Grid->PoolSize;
+}
+
+// ===========================================================================
+//  0194: Compute optimal cell size
+// ===========================================================================
+
+Real SuzuSpatialGridComputeOptimalCellSize(SuzuSpatialGrid *Grid,
+                                           const AABB *BodyAABBs,
+                                           int BodyCount) {
+	(void)Grid;
+	if (BodyCount <= 0) return Grid->CellSize;
+
+	// Compute average AABB extents
+	Real AvgExtentX = REAL_ZERO;
+	Real AvgExtentY = REAL_ZERO;
+	Real AvgExtentZ = REAL_ZERO;
+
+	for (int I = 0; I < BodyCount; I++) {
+		Vector3 HE = SabinaAABBHalfExtents(&BodyAABBs[I]);
+		AvgExtentX += HE.Data[0] * 2.0;
+		AvgExtentY += HE.Data[1] * 2.0;
+		AvgExtentZ += HE.Data[2] * 2.0;
+	}
+
+	Real InvN = 1.0 / (Real)BodyCount;
+	AvgExtentX *= InvN;
+	AvgExtentY *= InvN;
+	AvgExtentZ *= InvN;
+
+	// Cell size = average extent × 2 (so most bodies span 2-4 cells)
+	Real AvgMax = YuuMax(AvgExtentX, YuuMax(AvgExtentY, AvgExtentZ));
+	Real CellSize = AvgMax * 2.0;
+
+	// Clamp to reasonable range
+	if (CellSize < 0.1) CellSize = 0.1;
+	Real WorldSpanX = Grid->WorldMax.Data[0] - Grid->WorldMin.Data[0];
+	if (WorldSpanX > REAL_ZERO && CellSize > WorldSpanX * 0.5)
+		CellSize = WorldSpanX * 0.5;
+
+	return CellSize;
+}
+
+// ===========================================================================
+//  0195: Per-bucket spinlocks
+// ===========================================================================
+
+void SuzuSpatialGridLockBucket(SuzuSpatialGrid *Grid, int BucketIndex) {
+	if (!Grid->BucketLocks) return;
+	if (BucketIndex < 0 || BucketIndex >= Grid->BucketCount) return;
+	// Simple test-and-set spinlock
+	while (__atomic_test_and_set(&Grid->BucketLocks[BucketIndex],
+	                             __ATOMIC_ACQUIRE)) {
+		// Spin — yield to reduce contention
+		__builtin_ia32_pause();
+	}
+}
+
+void SuzuSpatialGridUnlockBucket(SuzuSpatialGrid *Grid, int BucketIndex) {
+	if (!Grid->BucketLocks) return;
+	if (BucketIndex < 0 || BucketIndex >= Grid->BucketCount) return;
+	__atomic_clear(&Grid->BucketLocks[BucketIndex], __ATOMIC_RELEASE);
+}
+
+// ===========================================================================
+//  0197: Debug cells
+// ===========================================================================
+
+void SuzuSpatialGridDebugCells(SuzuSpatialGrid *Grid,
+                               SuzuGridDebugCallback Callback,
+                               void *UserData) {
+	if (!Callback) return;
+
+	// Iterate all buckets; for each active cell, reconstruct its cell
+	// coordinates from the bucket chain and call the callback.
+	// Note: we don't have a reverse mapping from cell node → cell coords,
+	// so we track visited buckets and report per-bucket body counts.
+	for (int B = 0; B < Grid->BucketCount; B++) {
+		int Cur = Grid->Buckets[B];
+		if (Cur == SUZU_INVALID_INDEX) continue;
+
+		// Count bodies in this bucket chain
+		int BodyCount = 0;
+		while (Cur != SUZU_INVALID_INDEX) {
+			if (Grid->Cells[Cur].BodyIndex >= 0)
+				BodyCount++;
+			Cur = Grid->Cells[Cur].Next;
+		}
+
+		if (BodyCount == 0) continue;
+
+		// We don't have cell coordinates stored per node, so use
+		// the bucket index as a proxy and report (0,0,0) cell coords.
+		// A full implementation would store cell coords in SuzuCell.
+		Callback(0, 0, B, BodyCount, UserData);
+	}
+}
+
+// ===========================================================================
+//  0198: Resize grid with new cell size
+// ===========================================================================
+
+void SuzuSpatialGridResize(SuzuSpatialGrid *Grid, Real NewCellSize) {
+	if (NewCellSize <= REAL_ZERO) return;
+	if (Grid->BucketCount == 0) return;
+
+	// Save old state for scanning
+	int OldBucketCount = Grid->BucketCount;
+	int *OldBuckets = Grid->Buckets;
+	SuzuCell *OldCells = Grid->Cells;
+
+	// Determine new dimensions
+	Real NewGridW = (Grid->WorldMax.Data[0] - Grid->WorldMin.Data[0])
+	                / NewCellSize;
+	Real NewGridH = (Grid->WorldMax.Data[1] - Grid->WorldMin.Data[1])
+	                / NewCellSize;
+	Real NewGridD = (Grid->WorldMax.Data[2] - Grid->WorldMin.Data[2])
+	                / NewCellSize;
+
+	int EstCells = (int)(NewGridW * NewGridH * NewGridD);
+	if (EstCells < 64) EstCells = 64;
+
+	int NewBucketCount = 1;
+	while (NewBucketCount < EstCells * 4)
+		NewBucketCount <<= 1;
+	if (NewBucketCount < 64) NewBucketCount = 64;
+	if (NewBucketCount > 65536) NewBucketCount = 65536;
+
+	int NewBucketMask = NewBucketCount - 1;
+
+	// Allocate and swap in new bucket array
+	int *NewBuckets = (int *)calloc((size_t)NewBucketCount, sizeof(int));
+	for (int I = 0; I < NewBucketCount; I++)
+		NewBuckets[I] = SUZU_INVALID_INDEX;
+
+	int *NewLocks = (int *)calloc((size_t)NewBucketCount, sizeof(int));
+
+	// Scan old data for body indices BEFORE freeing anything
+	int BodySet[SUZU_MAX_BODIES];
+	int BodyCount = 0;
+	memset(BodySet, 0, sizeof(BodySet));
+	for (int B = 0; B < OldBucketCount; B++) {
+		int Cur = OldBuckets[B];
+		while (Cur != SUZU_INVALID_INDEX) {
+			int BI = OldCells[Cur].BodyIndex;
+			if (BI >= 0 && BI < SUZU_MAX_BODIES && !BodySet[BI]) {
+				BodySet[BI] = 1;
+				BodyCount++;
+			}
+			Cur = OldCells[Cur].Next;
+		}
+	}
+
+	// Build new cell pool
+	int NewPoolSize = Grid->PoolSize > 0 ? Grid->PoolSize : SUZU_DEFAULT_POOLSIZE;
+	SuzuCell *NewCells = (SuzuCell *)calloc((size_t)NewPoolSize,
+	                                         sizeof(SuzuCell));
+	int NewFreeHead = 0;
+	for (int I = 0; I < NewPoolSize - 1; I++)
+		NewCells[I].Next = I + 1;
+	NewCells[NewPoolSize - 1].Next = SUZU_INVALID_INDEX;
+
+	// Free old arrays and swap in new state
+	free(OldBuckets);
+	free(Grid->BucketLocks);
+	free(OldCells);
+
+	Grid->Buckets = NewBuckets;
+	Grid->BucketLocks = NewLocks;
+	Grid->Cells = NewCells;
+	Grid->FreeHead = NewFreeHead;
+	Grid->PoolSize = NewPoolSize;
+	Grid->BucketCount = NewBucketCount;
+	Grid->BucketMask = NewBucketMask;
+	Grid->CellSize = NewCellSize;
+
+	// Recompute grid dimensions
+	Grid->GridWidth = (int)SulettaCeil(
+		(Grid->WorldMax.Data[0] - Grid->WorldMin.Data[0]) / NewCellSize);
+	Grid->GridHeight = (int)SulettaCeil(
+		(Grid->WorldMax.Data[1] - Grid->WorldMin.Data[1]) / NewCellSize);
+	Grid->GridDepth = (int)SulettaCeil(
+		(Grid->WorldMax.Data[2] - Grid->WorldMin.Data[2]) / NewCellSize);
+	if (Grid->GridWidth  < 1) Grid->GridWidth  = 1;
+	if (Grid->GridHeight < 1) Grid->GridHeight = 1;
+	if (Grid->GridDepth  < 1) Grid->GridDepth  = 1;
+
+	// Reinsert body indices near the world center (caller should refresh positions)
+	int CenterX = Grid->GridWidth / 2;
+	int CenterY = Grid->GridHeight / 2;
+	int CenterZ = Grid->GridDepth / 2;
+	int NewActive = 0;
+	for (int I = 0; I < SUZU_MAX_BODIES && BodyCount > 0; I++) {
+		if (!BodySet[I]) continue;
+		BodyCount--;
+
+		int BIdx = SuzuSpatialGridHash(CenterX, CenterY, CenterZ, NewBucketMask);
+		int CellIdx = SuzuSpatialGridAllocCell(Grid);
+		if (CellIdx == SUZU_INVALID_INDEX) break;
+		Grid->Cells[CellIdx].BodyIndex = I;
+		Grid->Cells[CellIdx].Next = Grid->Buckets[BIdx];
+		Grid->Buckets[BIdx] = CellIdx;
+		NewActive++;
+	}
+
+	Grid->Stats.ActiveCells = NewActive;
 	Grid->Stats.PoolCapacity = Grid->PoolSize;
 }

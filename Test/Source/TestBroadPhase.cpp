@@ -6,6 +6,7 @@
  * Email: KleaSCM@gmail.com
  */
 #include <TohruPhysics/BroadPhase.h>
+#include <TohruPhysics/ThreadPool.h>
 #include <TohruPhysics/Geometry.h>
 #include <TohruPhysics/Math.h>
 #include <stdio.h>
@@ -288,6 +289,132 @@ static void TestNoPairsWhenSeparated(void) {
 	TEST(BP.PairCount == 0, "no pairs when bodies are far apart");
 }
 
+// 0185: Debug visualisation callback
+typedef struct {
+	int CallCount;
+	int SeenBodies[2048];
+	int SeenCount;
+} BroadPhaseDebugData;
+
+static void TestDebugCallback(int BodyIndex,
+                              const AABB *CurrentAABB,
+                              const AABB *PredictedAABB,
+                              int BodyType,
+                              void *UserData) {
+	(void)CurrentAABB; (void)PredictedAABB; (void)BodyType;
+	BroadPhaseDebugData *D = (BroadPhaseDebugData *)UserData;
+	D->CallCount++;
+	if (BodyIndex >= 0 && BodyIndex < 2048)
+		D->SeenBodies[D->SeenCount++] = BodyIndex;
+}
+
+static void TestDebugVisualisation(void) {
+	BroadPhase BP;
+	MiyabiBroadPhaseInit(&BP);
+
+	Vector3 Min = KannaVector3Make(-2,-2,-2);
+	Vector3 Max = KannaVector3Make(2,2,2);
+	BroadPhaseBody BA = MakeBody(0, BPBodyType_Dynamic, &Min, &Max,
+		COLLISIONGROUP_DYNAMIC, COLLISIONGROUP_ALL);
+	MiyabiBroadPhaseAddBody(&BP, &BA);
+
+	BroadPhaseBody BB = MakeBody(1, BPBodyType_Static, &Min, &Max,
+		COLLISIONGROUP_STATIC, COLLISIONGROUP_ALL);
+	MiyabiBroadPhaseAddBody(&BP, &BB);
+
+	BroadPhaseDebugData D;
+	memset(&D, 0, sizeof(D));
+	MiyabiBroadPhaseDebugAABBs(&BP, TestDebugCallback, &D);
+
+	TEST(D.CallCount == 2, "debug callback called for each body");
+
+	int Found0 = 0, Found1 = 0;
+	for (int I = 0; I < D.SeenCount; I++) {
+		if (D.SeenBodies[I] == 0) Found0 = 1;
+		if (D.SeenBodies[I] == 1) Found1 = 1;
+	}
+	TEST(Found0, "debug callback includes body 0");
+	TEST(Found1, "debug callback includes body 1");
+
+	// NULL callback should not crash
+	MiyabiBroadPhaseDebugAABBs(&BP, NULL, NULL);
+	TEST(1, "NULL debug callback OK");
+}
+
+// 0187: Threaded Evaluate
+static void TestEvaluateThreaded(void) {
+	BroadPhase BP;
+	MiyabiBroadPhaseInit(&BP);
+
+	// Add some overlapping bodies
+	for (int I = 0; I < 10; I++) {
+		Vector3 Min = KannaVector3Make(-1,-1,-1);
+		Vector3 Max = KannaVector3Make(1,1,1);
+		BroadPhaseBody B = MakeBody(I, BPBodyType_Dynamic, &Min, &Max,
+			COLLISIONGROUP_DYNAMIC, COLLISIONGROUP_ALL);
+		MiyabiBroadPhaseAddBody(&BP, &B);
+	}
+
+	// With NULL pool, should fall back to single-threaded
+	MiyabiBroadPhaseEvaluateThreaded(&BP, 0.0, NULL);
+	TEST(BP.PairCount > 0, "threaded evaluate (NULL pool) generates pairs");
+
+	// With real thread pool
+	ThreadPool *Pool = (ThreadPool *)malloc(sizeof(ThreadPool));
+	ThreadPoolInit(Pool, 4);
+
+	MiyabiBroadPhaseClearPairs(&BP);
+	MiyabiBroadPhaseEvaluateThreaded(&BP, 0.0, Pool);
+	int PairsWithPool = BP.PairCount;
+	TEST(PairsWithPool > 0, "threaded evaluate (with pool) generates pairs");
+
+	// Results should be same as single-threaded
+	BroadPhase BP2;
+	MiyabiBroadPhaseInit(&BP2);
+	for (int I = 0; I < 10; I++) {
+		Vector3 Min = KannaVector3Make(-1,-1,-1);
+		Vector3 Max = KannaVector3Make(1,1,1);
+		BroadPhaseBody B = MakeBody(I, BPBodyType_Dynamic, &Min, &Max,
+			COLLISIONGROUP_DYNAMIC, COLLISIONGROUP_ALL);
+		MiyabiBroadPhaseAddBody(&BP2, &B);
+	}
+	MiyabiBroadPhaseEvaluate(&BP2, 0.0);
+	TEST(BP.PairCount == BP2.PairCount,
+		"threaded and single-threaded produce same pair count");
+
+	ThreadPoolDestroy(Pool);
+	free(Pool);
+}
+
+// 0187: Threaded Evaluate with motion prediction
+static void TestEvaluateThreadedMotion(void) {
+	BroadPhase BP;
+	MiyabiBroadPhaseInit(&BP);
+
+	// Dynamic body with velocity
+	Vector3 Min = KannaVector3Make(-2,-2,-2);
+	Vector3 Max = KannaVector3Make(2,2,2);
+	Vector3 Vel = KannaVector3Make(10, 0, 0);
+	BroadPhaseBody BA = MakeBody(0, BPBodyType_Dynamic, &Min, &Max,
+		COLLISIONGROUP_DYNAMIC, COLLISIONGROUP_ALL);
+	BA.LinearVelocity = Vel;
+	MiyabiBroadPhaseAddBody(&BP, &BA);
+
+	// Static body at origin
+	BroadPhaseBody BB = MakeBody(1, BPBodyType_Static, &Min, &Max,
+		COLLISIONGROUP_STATIC, COLLISIONGROUP_ALL);
+	MiyabiBroadPhaseAddBody(&BP, &BB);
+
+	ThreadPool *Pool = (ThreadPool *)malloc(sizeof(ThreadPool));
+	ThreadPoolInit(Pool, 4);
+
+	MiyabiBroadPhaseEvaluateThreaded(&BP, 0.5, Pool);
+	TEST(BP.PairCount > 0, "threaded evaluate with motion finds overlap");
+
+	ThreadPoolDestroy(Pool);
+	free(Pool);
+}
+
 // ===========================================================================
 //  Main
 // ===========================================================================
@@ -304,6 +431,9 @@ int main(void) {
 	RUN_TEST(TestStatsTracking, "BroadPhase: stats tracking");
 	RUN_TEST(TestValidation, "BroadPhase: validation");
 	RUN_TEST(TestNoPairsWhenSeparated, "BroadPhase: no pairs when separated");
+	RUN_TEST(TestDebugVisualisation, "BroadPhase: debug visualisation");
+	RUN_TEST(TestEvaluateThreaded, "BroadPhase: threaded evaluate");
+	RUN_TEST(TestEvaluateThreadedMotion, "BroadPhase: threaded evaluate motion");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;

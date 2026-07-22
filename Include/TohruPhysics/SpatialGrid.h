@@ -50,6 +50,11 @@ typedef struct {
 	int Next;  // index of next node in chain, SUZU_INVALID_INDEX for end
 } SuzuCell;
 
+// 0197: Debug visualisation callback — called per active cell.
+typedef void (*SuzuGridDebugCallback)(int CellX, int CellY, int CellZ,
+                                      int BodyCount,
+                                      void *UserData);
+
 // 0196: Statistics
 typedef struct {
 	int TotalBodies;
@@ -85,6 +90,9 @@ typedef struct {
 	SuzuCell *Cells;
 	int       PoolSize;
 	int       FreeHead;  // index of first free cell, SUZU_INVALID_INDEX = empty
+
+	// 0195: Per-bucket spinlocks (simple volatile int flag, 0=unlocked, 1=locked)
+	int      *BucketLocks;
 
 	// Statistics
 	SuzuStats Stats;
@@ -150,3 +158,23 @@ int  SuzuSpatialGridAllocCell(SuzuSpatialGrid *Grid);
 
 // 0199: Free a cell node back to the pool (free list push).
 void SuzuSpatialGridFreeCell(SuzuSpatialGrid *Grid, int CellIndex);
+
+// 0194: Compute optimal cell size based on body AABB distribution.
+// Analyses average AABB extents and recommends a cell size.
+Real SuzuSpatialGridComputeOptimalCellSize(SuzuSpatialGrid *Grid,
+                                           const AABB *BodyAABBs,
+                                           int BodyCount);
+
+// 0195: Lock/unlock a bucket for thread-safe concurrent access.
+void SuzuSpatialGridLockBucket(SuzuSpatialGrid *Grid, int BucketIndex);
+void SuzuSpatialGridUnlockBucket(SuzuSpatialGrid *Grid, int BucketIndex);
+
+// 0197: Debug visualisation — iterate all active cells and call callback.
+void SuzuSpatialGridDebugCells(SuzuSpatialGrid *Grid,
+                               SuzuGridDebugCallback Callback,
+                               void *UserData);
+
+// 0198: Resize grid with a new cell size. Rebuilds all internal data
+// structures. All existing body indices are preserved.
+void SuzuSpatialGridResize(SuzuSpatialGrid *Grid,
+                           Real NewCellSize);

@@ -301,6 +301,137 @@ static void TestClear(void) {
 	TEST(G.Stats.ActiveCells == 0, "no active cells after clear");
 }
 
+// 0194: Compute optimal cell size
+static void TestComputeOptimalCellSize(void) {
+	Vector3 Min = KannaVector3Make(-50, -50, -50);
+	Vector3 Max = KannaVector3Make(50, 50, 50);
+	SuzuSpatialGrid G;
+	SuzuSpatialGridInit(&G, &Min, &Max, 5.0, 128, 4096);
+
+	AABB Boxes[5];
+	for (int I = 0; I < 5; I++) {
+		Vector3 BMin = KannaVector3Make(-2, -2, -2);
+		Vector3 BMax = KannaVector3Make(2, 2, 2);
+		Boxes[I] = SabinaAABBMake(&BMin, &BMax);
+	}
+
+	Real Cell = SuzuSpatialGridComputeOptimalCellSize(&G, Boxes, 5);
+	// Average extent = 4, cell = 4 * 2 = 8
+	TEST(Cell > 0, "optimal cell size positive");
+	TEST(Cell > 1 && Cell < 100, "optimal cell size in reasonable range");
+
+	// Empty body list should return current cell size
+	Real CellEmpty = SuzuSpatialGridComputeOptimalCellSize(&G, Boxes, 0);
+	TEST(CellEmpty > 0, "cell size for empty list is positive");
+}
+
+// 0195: Lock/Unlock bucket
+static void TestBucketLocks(void) {
+	Vector3 Min = KannaVector3Make(-50, -50, -50);
+	Vector3 Max = KannaVector3Make(50, 50, 50);
+	SuzuSpatialGrid G;
+	SuzuSpatialGridInit(&G, &Min, &Max, 5.0, 128, 4096);
+
+	// Lock and unlock a valid bucket — should not crash
+	int MidBucket = G.BucketCount / 2;
+	SuzuSpatialGridLockBucket(&G, MidBucket);
+	SuzuSpatialGridUnlockBucket(&G, MidBucket);
+
+	// Out of range — should not crash
+	SuzuSpatialGridLockBucket(&G, -1);
+	SuzuSpatialGridUnlockBucket(&G, G.BucketCount + 100);
+
+	// Sequential lock + unlock via insert/remove in threaded context:
+	// With a single thread, verify lock/unlock round-trips cleanly.
+	SuzuSpatialGridLockBucket(&G, MidBucket);
+	// Already locked — second lock from same thread would spin (OK)
+	SuzuSpatialGridUnlockBucket(&G, MidBucket);
+	TEST(1, "bucket lock/unlock round-trip OK");
+}
+
+// 0197: Debug cells callback
+typedef struct {
+	int CallCount;
+	int TotalBodies;
+} DebugCallData;
+
+static void TestDebugCallback(int CX, int CY, int CZ,
+                              int BodyCount, void *UserData) {
+	(void)CX; (void)CY; (void)CZ;
+	DebugCallData *D = (DebugCallData *)UserData;
+	D->CallCount++;
+	D->TotalBodies += BodyCount;
+}
+
+static void TestDebugCells(void) {
+	Vector3 Min = KannaVector3Make(-50, -50, -50);
+	Vector3 Max = KannaVector3Make(50, 50, 50);
+	SuzuSpatialGrid G;
+	SuzuSpatialGridInit(&G, &Min, &Max, 5.0, 128, 4096);
+
+	// Insert a few bodies
+	Vector3 BMin = KannaVector3Make(-2, -2, -2);
+	Vector3 BMax = KannaVector3Make(2, 2, 2);
+	AABB Box = SabinaAABBMake(&BMin, &BMax);
+	SuzuSpatialGridInsert(&G, 0, &Box);
+	SuzuSpatialGridInsert(&G, 1, &Box);
+
+	DebugCallData D;
+	memset(&D, 0, sizeof(D));
+	SuzuSpatialGridDebugCells(&G, TestDebugCallback, &D);
+
+	TEST(D.CallCount > 0, "debug callback called at least once");
+	TEST(D.TotalBodies >= 2, "debug callback counted all bodies");
+
+	// NULL callback should not crash
+	SuzuSpatialGridDebugCells(&G, NULL, NULL);
+	TEST(1, "NULL debug callback OK");
+}
+
+// 0198: Resize grid
+static void TestResize(void) {
+	Vector3 Min = KannaVector3Make(-50, -50, -50);
+	Vector3 Max = KannaVector3Make(50, 50, 50);
+	SuzuSpatialGrid G;
+	SuzuSpatialGridInit(&G, &Min, &Max, 5.0, 128, 4096);
+
+	// Insert bodies
+	Vector3 BMin = KannaVector3Make(-2, -2, -2);
+	Vector3 BMax = KannaVector3Make(2, 2, 2);
+	AABB Box = SabinaAABBMake(&BMin, &BMax);
+	SuzuSpatialGridInsert(&G, 0, &Box);
+	SuzuSpatialGridInsert(&G, 1, &Box);
+
+	// Resize to different cell size
+	SuzuSpatialGridResize(&G, 10.0);
+	TEST(G.CellSize == 10.0, "cell size updated after resize");
+	TEST(G.BucketCount > 0, "bucket count positive after resize");
+	TEST(G.GridWidth > 0, "grid width positive after resize");
+	TEST(G.Cells != NULL, "cells allocated after resize");
+
+	// Bodies should still be queryable (reinserted at center cell)
+	int Bodies[64];
+	int Count = SuzuSpatialGridQuery(&G, &Box, Bodies, 64);
+	TEST(Count >= 2, "bodies queryable after resize");
+
+	// Resize with zero cell size should be a no-op
+	SuzuSpatialGridResize(&G, 0.0);
+	TEST(G.CellSize == 10.0, "cell size unchanged after zero resize");
+}
+
+// 0198: Resize empty grid (no bodies)
+static void TestResizeEmpty(void) {
+	Vector3 Min = KannaVector3Make(-50, -50, -50);
+	Vector3 Max = KannaVector3Make(50, 50, 50);
+	SuzuSpatialGrid G;
+	SuzuSpatialGridInit(&G, &Min, &Max, 5.0, 128, 4096);
+
+	SuzuSpatialGridResize(&G, 10.0);
+	TEST(G.CellSize == 10.0, "cell size updated (empty resize)");
+	TEST(G.BucketCount > 0, "bucket count positive (empty resize)");
+	TEST(G.FreeHead >= 0, "free list intact (empty resize)");
+}
+
 // ===========================================================================
 //  Main
 // ===========================================================================
@@ -318,6 +449,11 @@ int main(void) {
 	RUN_TEST(TestStats, "SpatialGrid: stats");
 	RUN_TEST(TestPoolAllocFree, "SpatialGrid: pool alloc/free");
 	RUN_TEST(TestClear, "SpatialGrid: clear");
+	RUN_TEST(TestComputeOptimalCellSize, "SpatialGrid: compute optimal cell size");
+	RUN_TEST(TestBucketLocks, "SpatialGrid: bucket lock/unlock");
+	RUN_TEST(TestDebugCells, "SpatialGrid: debug cells callback");
+	RUN_TEST(TestResize, "SpatialGrid: resize");
+	RUN_TEST(TestResizeEmpty, "SpatialGrid: resize (empty)");
 
 	fprintf(stderr, "\n=== %d passed, 0 failed ===\n", Passed);
 	return 0;

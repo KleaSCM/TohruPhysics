@@ -41,7 +41,7 @@ typedef struct {
 // 0187: Thread pool state.
 // ThreadPoolInit must be called before use; zero-initialised state is safe
 // to destroy (all pointers null → no-op).
-typedef struct {
+typedef struct ThreadPool {
 	// Opaque handle storage — implementation manages std::thread objects.
 	// Zero-initialised = no threads.
 	void         *ThreadData[THREADPOOL_MAX_THREADS];
@@ -53,6 +53,8 @@ typedef struct {
 	void          *CurrentArg;
 	int            TotalTasks;
 	int64_t        TasksCompleted;
+	int64_t        BatchId;   // incremented each ParFor call (0187)
+	int            ActiveTasks; // workers currently inside Func (0187)
 
 	// Work-stealing deques
 	WorkStealingDeque Deques[THREADPOOL_MAX_THREADS];
