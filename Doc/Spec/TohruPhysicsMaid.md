@@ -694,16 +694,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0190. Implement `BroadPhase` statistics (pair count, update time, memory usage).
 
 #### 1.21 Collision Detection - Spatial Grid Implementation
-- [ ] 0191. Implement `SpatialGrid` with uniform cell size and 3D hashing function.
-- [ ] 0192. Implement `SpatialGrid` insertion, update, and removal of bodies.
-- [ ] 0193. Implement `SpatialGrid` neighbor query returning all bodies in adjacent cells.
+- [x] 0191. Implement `SpatialGrid` with uniform cell size and 3D hashing function.
+- [x] 0192. Implement `SpatialGrid` insertion, update, and removal of bodies.
+- [x] 0193. Implement `SpatialGrid` neighbor query returning all bodies in adjacent cells.
 - [ ] 0194. Implement `SpatialGrid` cell size tuning for optimal performance based on body sizes.
 - [ ] 0195. Implement `SpatialGrid` multi-threaded updates with per-cell locks.
-- [ ] 0196. Implement `SpatialGrid` statistics (cell occupancy, query times, distribution).
+- [x] 0196. Implement `SpatialGrid` statistics (cell occupancy, query times, distribution).
 - [ ] 0197. Implement `SpatialGrid` debug visualization with cell outlines and occupancy counts.
 - [ ] 0198. Implement `SpatialGrid` dynamic cell size adjustment for non-uniform scenes.
-- [ ] 0199. Implement `SpatialGrid` hash conflict resolution with separate chaining.
-- [ ] 0200. Implement `SpatialGrid` memory pooling for cell storage to avoid fragmentation.
+- [x] 0199. Implement `SpatialGrid` hash conflict resolution with separate chaining.
+- [x] 0200. Implement `SpatialGrid` memory pooling for cell storage to avoid fragmentation.
 
 #### 1.22 Collision Detection - Bounding Volume Hierarchy (BVH)
 - [ ] 0201. Implement `BvhNode` structural data layouts packing structural children and bounding volumes.

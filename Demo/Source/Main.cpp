@@ -23,6 +23,7 @@
 #include <TohruPhysics/SAT.h>
 #include <TohruPhysics/ContactManifold.h>
 #include <TohruPhysics/BroadPhase.h>
+#include <TohruPhysics/SpatialGrid.h>
 #include <TohruPhysics/Array.h>
 #include <TohruPhysics/Error.h>
 #include <TohruPhysics/Log.h>
@@ -751,6 +752,65 @@ static void DemoBroadPhase(void) {
 }
 
 // ===========================================================================
+//  15. SpatialGrid demo
+// ===========================================================================
+
+static void DemoSpatialGrid(void) {
+	HEADER("15. SpatialGrid — Uniform Spatial Subdivision");
+
+	Vector3 WorldMin = KannaVector3Make(-50, -50, -50);
+	Vector3 WorldMax = KannaVector3Make(50, 50, 50);
+	SuzuSpatialGrid G;
+	SuzuSpatialGridInit(&G, &WorldMin, &WorldMax, 5.0, 512, 8192);
+	fprintf(stderr, "  Grid: %d×%d×%d cells  cellSize=%.0f  buckets=%d  pool=%d\n",
+		G.GridWidth, G.GridHeight, G.GridDepth,
+		G.CellSize, G.BucketCount, G.PoolSize);
+
+	// Insert 4 bodies with small AABBs around the origin
+	AABB Boxes[4];
+	for (int I = 0; I < 4; I++) {
+		Vector3 Min = KannaVector3Make(-1, -1, -1);
+		Vector3 Max = KannaVector3Make(1, 1, 1);
+		Boxes[I] = SabinaAABBMake(&Min, &Max);
+		SuzuSpatialGridInsert(&G, I, &Boxes[I]);
+	}
+
+	// Query a small region
+	int Bodies[64];
+	AABB QueryBox;
+	Vector3 QMin = KannaVector3Make(-2, -2, -2);
+	Vector3 QMax = KannaVector3Make(2, 2, 2);
+	QueryBox = SabinaAABBMake(&QMin, &QMax);
+	int Count = SuzuSpatialGridQuery(&G, &QueryBox, Bodies, 64);
+	fprintf(stderr, "  Query nearby: %d bodies found\n", Count);
+
+	// Generate pairs
+	int OutPairs[32 * 2];
+	int OutCount = 0;
+	SuzuSpatialGridGeneratePairs(&G, Boxes, 4, OutPairs, &OutCount, 32);
+	fprintf(stderr, "  Pairs generated: %d  (C(4,2)=6 expected)\n", OutCount);
+
+	// Move one body far away
+	Vector3 NewMin = KannaVector3Make(40, 40, 40);
+	Vector3 NewMax = KannaVector3Make(45, 45, 45);
+	AABB NewBox = SabinaAABBMake(&NewMin, &NewMax);
+	SuzuSpatialGridUpdate(&G, 0, &Boxes[0], &NewBox);
+	Boxes[0] = NewBox;
+
+	OutCount = 0;
+	SuzuSpatialGridGeneratePairs(&G, Boxes, 4, OutPairs, &OutCount, 32);
+	fprintf(stderr, "  Pairs after moving body 0: %d  (C(3,2)=3 expected)\n", OutCount);
+
+	// Stats
+	SuzuStats S = SuzuSpatialGridGetStats(&G);
+	fprintf(stderr, "  Stats: insertions=%d  queries=%d  cellsVisited=%d  maxChain=%d\n",
+		S.TotalInsertions, S.TotalQueries, S.TotalCellsVisited, S.MaxChainLength);
+
+	SuzuSpatialGridDestroy(&G);
+	fprintf(stderr, "  Destroyed: memory freed\n");
+}
+
+// ===========================================================================
 //  Main
 // ===========================================================================
 
@@ -777,6 +837,7 @@ int main(void) {
 	DemoErrorLog();
 	DemoPerformance();
 	DemoBroadPhase();
+	DemoSpatialGrid();
 
 	SEP();
 	fprintf(stderr, "  ✅  All subsystems operational.\n");

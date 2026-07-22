@@ -87,3 +87,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	BroadPhase/BroadPhase.cpp
 )
+
+# SpatialGrid subsystem
+target_sources(TohruPhysics PRIVATE
+	SpatialGrid/SpatialGrid.cpp
+)

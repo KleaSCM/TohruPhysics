@@ -79,3 +79,8 @@ add_executable(TestBroadPhase
 	Source/TestBroadPhase.cpp
 )
 target_link_libraries(TestBroadPhase PRIVATE TohruPhysics)
+
+add_executable(TestSpatialGrid
+	Source/TestSpatialGrid.cpp
+)
+target_link_libraries(TestSpatialGrid PRIVATE TohruPhysics)
