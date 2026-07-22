@@ -718,16 +718,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0210. Implement dynamic leaf splitting systems checking item threshold counts defensively.
 
 #### 1.23 Collision Detection - Sweep and Prune (SAP)
-- [ ] 0211. Implement `SapAxisList` structures managing structured endpoints for multi-coordinate sorting.
-- [ ] 0212. Write `SapInsertBody` operations placing new bounding metrics into coordinate lists.
-- [ ] 0213. Write `SapRemoveBody` cleanup paths erasing tracked tracking parameters cleanly.
-- [ ] 0214. Implement `SapUpdateSort` sorting algorithms using incremental insertion sort passes.
-- [ ] 0215. Implement `SapGeneratePairs` overlap checks to sweep active coordinate pairs efficiently.
-- [ ] 0216. Write multi-axis projection logic to handle broad-phase tracking across 3D environments.
-- [ ] 0217. Implement localized marker mechanisms to filter duplicate candidate pairs quickly.
-- [ ] 0218. Write robust dimension coordinate fallback maps to avoid precision failures on aligned objects.
-- [ ] 0219. Implement batch bounding box verification checks over active sorting tracking axes.
-- [ ] 0220. Build boundary limit checking routines to manage extreme coordinate mapping extremes safely.
+- [x] 0211. Implement `SapAxisList` structures managing structured endpoints for multi-coordinate sorting.
+- [x] 0212. Write `SapInsertBody` operations placing new bounding metrics into coordinate lists.
+- [x] 0213. Write `SapRemoveBody` cleanup paths erasing tracked tracking parameters cleanly.
+- [x] 0214. Implement `SapUpdateSort` sorting algorithms using incremental insertion sort passes.
+- [x] 0215. Implement `SapGeneratePairs` overlap checks to sweep active coordinate pairs efficiently.
+- [x] 0216. Write multi-axis projection logic to handle broad-phase tracking across 3D environments.
+- [x] 0217. Implement localized marker mechanisms to filter duplicate candidate pairs quickly.
+- [x] 0218. Write robust dimension coordinate fallback maps to avoid precision failures on aligned objects.
+- [x] 0219. Implement batch bounding box verification checks over active sorting tracking axes.
+- [x] 0220. Build boundary limit checking routines to manage extreme coordinate mapping extremes safely.
 
 #### 1.24 Simulation Islands & Activation Management
 - [ ] 0221. Implement `SimulationIsland` structural groupings to organize interacting bodies neatly.

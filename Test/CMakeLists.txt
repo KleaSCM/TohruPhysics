@@ -94,3 +94,8 @@ add_executable(TestBVH
 	Source/TestBVH.cpp
 )
 target_link_libraries(TestBVH PRIVATE TohruPhysics)
+
+add_executable(TestSAP
+	Source/TestSAP.cpp
+)
+target_link_libraries(TestSAP PRIVATE TohruPhysics)

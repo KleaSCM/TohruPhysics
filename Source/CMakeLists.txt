@@ -104,3 +104,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	BVH/BVH.cpp
 )
+
+# SAP subsystem
+target_sources(TohruPhysics PRIVATE
+	SAP/SAP.cpp
+)
