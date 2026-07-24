@@ -4,7 +4,8 @@
  *
  * Demonstrates: Arena, Vector3, Matrix, Quaternion, Transform,
  * BodyState, Geometry (primitives + intersections + closest point + support),
- * GJK/EPA/SAT, ContactManifold, Array, Math, Error/Log, benchmarks.
+ * GJK/EPA/SAT, ContactManifold, Array, Math, Error/Log, benchmarks,
+ * BroadPhase, SpatialGrid, BVH, SAP, Island, Integrator.
  *
  * All output goes to stderr (clean pipe separation).
  * 全ての出力はstderrに出るの（パイプ分離に対応）。
@@ -24,6 +25,10 @@
 #include <TohruPhysics/ContactManifold.h>
 #include <TohruPhysics/BroadPhase.h>
 #include <TohruPhysics/SpatialGrid.h>
+#include <TohruPhysics/BVH.h>
+#include <TohruPhysics/SAP.h>
+#include <TohruPhysics/Island.h>
+#include <TohruPhysics/Integrator.h>
 #include <TohruPhysics/Array.h>
 #include <TohruPhysics/Error.h>
 #include <TohruPhysics/Log.h>
@@ -810,6 +815,205 @@ static void DemoSpatialGrid(void) {
 	fprintf(stderr, "  Destroyed: memory freed\n");
 }
 
+static int BvhRayCallback(int PrimitiveIndex, const Ray *Ray,
+                          Real *OutT, void *UserData) {
+	(void)Ray; (void)OutT; (void)UserData;
+	return PrimitiveIndex >= 0 ? 1 : 0;
+}
+
+static int BvhVolumeCallback(int PrimitiveIndex, const AABB *QueryAABB,
+                             void *UserData) {
+	(void)QueryAABB; (void)UserData;
+	return PrimitiveIndex >= 0 ? 1 : 0;
+}
+
+// ===========================================================================
+//  16. BVH — Bounding Volume Hierarchy
+// ===========================================================================
+
+static void DemoBVH(void) {
+	HEADER("16. BVH — Bounding Volume Hierarchy");
+
+	TazusaBVHNode Nodes[1024];
+	int PrimIndices[1024];
+	TazusaBVHTree Tree;
+	TazusaBVHInit(&Tree, Nodes, 1024, PrimIndices, 1024);
+
+	AABB Boxes[8];
+	for (int X = 0; X < 2; X++)
+		for (int Y = 0; Y < 2; Y++)
+			for (int Z = 0; Z < 2; Z++) {
+				Vector3 Min = KannaVector3Make(X * 3.0 - 1, Y * 3.0 - 1, Z * 3.0 - 1);
+				Vector3 Max = KannaVector3Make(X * 3.0 + 1, Y * 3.0 + 1, Z * 3.0 + 1);
+				Boxes[X * 4 + Y * 2 + Z] = SabinaAABBMake(&Min, &Max);
+			}
+
+	int N = TazusaBVHBuild(&Tree, Boxes, 8, TAZUSA_BUILD_DEFAULT);
+	fprintf(stderr, "  Build: %d nodes for 8 primitives  root=(%.1f,%.1f,%.1f)-(%.1f,%.1f,%.1f)\n",
+		N,
+		Tree.Nodes[0].Box.Min.Data[0], Tree.Nodes[0].Box.Min.Data[1], Tree.Nodes[0].Box.Min.Data[2],
+		Tree.Nodes[0].Box.Max.Data[0], Tree.Nodes[0].Box.Max.Data[1], Tree.Nodes[0].Box.Max.Data[2]);
+
+	int Changed = TazusaBVHRefit(&Tree, Boxes);
+	fprintf(stderr, "  Refit: %d AABBs adjusted\n", Changed);
+
+	Vector3 RayOrigin = KannaVector3Make(-5, 0, 0);
+	Vector3 RayDir = KannaVector3Make(1, 0, 0);
+	Ray R = SabinaRayMake(&RayOrigin, &RayDir);
+	int Hits = TazusaBVHTraverseRay(&Tree, &R, BvhRayCallback, NULL);
+	fprintf(stderr, "  Ray traversal: %d leaf hits\n", Hits);
+
+	Vector3 QMin = KannaVector3Make(-2, -2, -2);
+	Vector3 QMax = KannaVector3Make(2, 2, 2);
+	AABB Query = SabinaAABBMake(&QMin, &QMax);
+	int VolHits = TazusaBVHTraverseVolume(&Tree, &Query, BvhVolumeCallback, NULL);
+	fprintf(stderr, "  Volume query: %d leaf overlaps\n", VolHits);
+
+	int Depth = TazusaBVHValidateDepth(&Tree, 64);
+	fprintf(stderr, "  Depth: %d\n", Depth);
+
+	TazusaBVHReset(&Tree);
+	fprintf(stderr, "  Reset: tree cleared\n");
+}
+
+// ===========================================================================
+//  17. SAP — Sweep and Prune
+// ===========================================================================
+
+static void DemoSAP(void) {
+	HEADER("17. SAP — Sweep and Prune");
+
+	IliaSapManager Mgr;
+	IliaSapInit(&Mgr, 64);
+	fprintf(stderr, "  Manager: capacity=%d\n", Mgr.BodyCapacity);
+
+	AABB Boxes[4];
+	for (int I = 0; I < 4; I++) {
+		Vector3 Min = KannaVector3Make(I * 1.5, -1, -1);
+		Vector3 Max = KannaVector3Make(I * 1.5 + 2, 1, 1);
+		Boxes[I] = SabinaAABBMake(&Min, &Max);
+		IliaSapInsertBody(&Mgr, I, &Boxes[I]);
+	}
+	fprintf(stderr, "  Inserted 4 bodies\n");
+
+	IliaSapUpdateSort(&Mgr);
+	IliaSapGeneratePairs(&Mgr);
+	fprintf(stderr, "  Pairs: %d  (adjacent overlaps on X)\n", Mgr.OverlapCount);
+
+	IliaSapRemoveBody(&Mgr, 1);
+	fprintf(stderr, "  After remove body 1\n");
+
+	IliaSapInsertBody(&Mgr, 1, &Boxes[1]);
+	IliaSapUpdateSort(&Mgr);
+	IliaSapGeneratePairs(&Mgr);
+	fprintf(stderr, "  Re-insert body 1: pairs=%d\n", Mgr.OverlapCount);
+
+	int Surviving = IliaSapVerifyPairs(&Mgr, Boxes);
+	fprintf(stderr, "  Pair verification: %d survive\n", Surviving);
+
+	IliaSapDestroy(&Mgr);
+	fprintf(stderr, "  Destroyed\n");
+}
+
+// ===========================================================================
+//  18. Island — Connected Component Graph
+// ===========================================================================
+
+static void DemoIsland(void) {
+	HEADER("18. Island — Connected Component Graph");
+
+	KuyuIslandManager Mgr;
+	int R = KuyuIslandInit(&Mgr, 12, 4);
+	(void)R;
+	fprintf(stderr, "  Manager: bodyCapacity=%d  islandCapacity=%d\n",
+		Mgr.BodyCapacity, Mgr.IslandCapacity);
+
+	int Pairs[] = {0, 1,  1, 2,  3, 4};
+	KuyuIslandBuildGraph(&Mgr, Pairs, 3);
+	int CompCount = KuyuIslandFindComponents(&Mgr);
+	fprintf(stderr, "  Components: %d  ({0,1,2}, {3,4}, {5})\n", CompCount);
+
+	KuyuIslandActivateBody(&Mgr, 0);
+	fprintf(stderr, "  Activated body 0: island=0  bodies=%d\n",
+		Mgr.Islands[0].BodyCount);
+
+	RigidBodyState States[6];
+	memset(States, 0, sizeof(States));
+	int Deact = KuyuIslandDeactivateCheck(&Mgr, States, 6);
+	fprintf(stderr, "  Deactivate check: %d islands (all bodies static after init)\n", Deact);
+
+	const int *Neighbors = NULL;
+	int Conn = KuyuIslandGetConnections(&Mgr, 0, &Neighbors);
+	fprintf(stderr, "  Connections from body 0: %d\n", Conn);
+
+	KuyuIslandMerge(&Mgr, 0, 1);
+	fprintf(stderr, "  Merged islands 0 & 1\n");
+
+	KuyuIslandDestroy(&Mgr);
+	fprintf(stderr, "  Destroyed\n");
+}
+
+// ===========================================================================
+//  19. Integrator — Rigid Body Numerical Integration
+// ===========================================================================
+
+static void DemoIntegrator(void) {
+	HEADER("19. Integrator — Rigid Body Numerical Integration");
+
+	RigidBodyState State;
+	memset(&State, 0, sizeof(State));
+	State.Position = KannaVector3Make(0, 10, 0);
+	State.Rotation = EuphylliaQuaternionIdentity();
+	State.Force = KannaVector3Make(0, -10, 0);
+
+	MassProperties Mass;
+	Mass.Mass = 1.0;
+	Mass.InverseMass = 1.0;
+	Mass.CenterOfMass = KannaVector3Make(0, 0, 0);
+
+	InertiaTensor Inertia;
+	memset(&Inertia, 0, sizeof(Inertia));
+	Inertia.InverseInertiaWorld.Data[0] = 1.0;
+	Inertia.InverseInertiaWorld.Data[4] = 1.0;
+	Inertia.InverseInertiaWorld.Data[8] = 1.0;
+
+	Vector3 Gravity = KannaVector3Make(0, -9.81, 0);
+	ShioriIntegratorConfig Cfg = ShioriDefaultConfig();
+	Real Dt = 1.0 / 60.0;
+
+	fprintf(stderr, "  Initial: pos=(%.2f, %.2f, %.2f)\n",
+		State.Position.Data[0], State.Position.Data[1], State.Position.Data[2]);
+
+	ShioriStepBody(&State, &Mass, &Inertia, &Gravity, &Cfg, Dt, NULL, NULL, NULL);
+	fprintf(stderr, "  After 1 step:  pos=(%.2f, %.2f, %.2f)  vel=(%.2f, %.2f, %.2f)\n",
+		State.Position.Data[0], State.Position.Data[1], State.Position.Data[2],
+		State.LinearVelocity.Data[0], State.LinearVelocity.Data[1], State.LinearVelocity.Data[2]);
+
+	for (int I = 1; I < 60; I++)
+		ShioriStepBody(&State, &Mass, &Inertia, &Gravity, &Cfg, Dt, NULL, NULL, NULL);
+	fprintf(stderr, "  After 60 steps: pos=(%.2f, %.2f, %.2f)  vel=(%.2f, %.2f, %.2f)\n",
+		State.Position.Data[0], State.Position.Data[1], State.Position.Data[2],
+		State.LinearVelocity.Data[0], State.LinearVelocity.Data[1], State.LinearVelocity.Data[2]);
+
+	State.LinearVelocity = KannaVector3Make(50, 0, 0);
+	Real AdaptDt = ShioriComputeTimeStep(&State, 1.0, &Cfg);
+	fprintf(stderr, "  Adaptive dt (fast, r=1): %.6f  (default=%.6f)\n",
+		AdaptDt, SHIORI_DEFAULT_DT);
+
+	RigidBodyState State2;
+	memset(&State2, 0, sizeof(State2));
+	State2.AngularVelocity = KannaVector3Make(10, 0, 1);
+	Cfg.EnableGyroscopicForces = 1;
+	Real GMag = ShioriApplyGyroscopicForces(&State2, &Inertia, Dt);
+	fprintf(stderr, "  Gyroscopic: |τ| = %.4f\n", GMag);
+
+	State2.LinearVelocity = KannaVector3Make(500, 0, 0);
+	int C = ShioriClampVelocity(&State2, &Cfg);
+	fprintf(stderr, "  Clamp: %d  (|v| capped at %.1f)\n", C, Cfg.LinearVelocityCap);
+
+	fprintf(stderr, "  All integrator subsystems operational.\n");
+}
+
 // ===========================================================================
 //  Main
 // ===========================================================================
@@ -838,6 +1042,10 @@ int main(void) {
 	DemoPerformance();
 	DemoBroadPhase();
 	DemoSpatialGrid();
+	DemoBVH();
+	DemoSAP();
+	DemoIsland();
+	DemoIntegrator();
 
 	SEP();
 	fprintf(stderr, "  ✅  All subsystems operational.\n");

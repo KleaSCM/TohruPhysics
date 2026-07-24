@@ -114,3 +114,8 @@ target_sources(TohruPhysics PRIVATE
 target_sources(TohruPhysics PRIVATE
 	Island/Island.cpp
 )
+
+# Integrator subsystem
+target_sources(TohruPhysics PRIVATE
+	Integrator/Integrator.cpp
+)

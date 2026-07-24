@@ -742,16 +742,16 @@ Defensive Programming --> Performance --> Safety
 - [x] 0230. Build internal load-balancing systems to route isolated islands across threads.
 
 #### 1.25 Rigid Body Dynamics - Numerical Integration
-- [ ] 0231. Implement `IntegrateVelocities` pipelines applying accumulated forces using Euler steps.
-- [ ] 0232. Implement `IntegratePositions` tracking updates mapping spatial coordinate transformations.
-- [ ] 0233. Write robust velocity-clamping safety filters to prevent numerical explosions.
-- [ ] 0234. Write `IntegrateRotationalState` quaternion update systems handling torque vectors.
-- [ ] 0235. Implement specialized coordinate verification layers to capture orientation drift safely.
-- [ ] 0236. Write precise mass-center tracking loops adjusting system positions accurately.
-- [ ] 0237. Implement second-order integration variants to process complex scientific setups.
-- [ ] 0238. Write high-velocity trajectory prediction logic to prevent thin objects from tunneling.
-- [ ] 0239. Implement angular momentum integration channels separating gyroscopic force metrics.
-- [ ] 0240. Build step scaling calculations adjusting acceleration states to handle varying time spans.
+- [x] 0231. Implement `IntegrateVelocities` pipelines applying accumulated forces using Euler steps.
+- [x] 0232. Implement `IntegratePositions` tracking updates mapping spatial coordinate transformations.
+- [x] 0233. Write robust velocity-clamping safety filters to prevent numerical explosions.
+- [x] 0234. Write `IntegrateRotationalState` quaternion update systems handling torque vectors.
+- [x] 0235. Implement specialized coordinate verification layers to capture orientation drift safely.
+- [x] 0236. Write precise mass-center tracking loops adjusting system positions accurately.
+- [x] 0237. Implement second-order integration variants to process complex scientific setups.
+- [x] 0238. Write high-velocity trajectory prediction logic to prevent thin objects from tunneling.
+- [x] 0239. Implement angular momentum integration channels separating gyroscopic force metrics.
+- [x] 0240. Build step scaling calculations adjusting acceleration states to handle varying time spans.
 
 #### 1.26 Dynamics Solver - Constraint Formulations
 - [ ] 0241. Implement `JacobianMatrix` contiguous structural systems mapping velocity relation parameters.

@@ -104,3 +104,8 @@ add_executable(TestIsland
 	Source/TestIsland.cpp
 )
 target_link_libraries(TestIsland PRIVATE TohruPhysics)
+
+add_executable(TestIntegrator
+	Source/TestIntegrator.cpp
+)
+target_link_libraries(TestIntegrator PRIVATE TohruPhysics)

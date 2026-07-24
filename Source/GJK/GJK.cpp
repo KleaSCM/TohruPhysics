@@ -516,6 +516,13 @@ void EPAEvaluate(EPAState *E,
 
 		if (ClosestFaceIdx < 0) break;
 
+		// Track best penetration depth even if not converged
+		// 収束していなくても最深侵入深さを追跡
+		if (ClosestDist > E->PenetrationDepth) {
+			E->PenetrationDepth = ClosestDist;
+			E->ContactNormal = E->Faces[ClosestFaceIdx].Normal;
+		}
+
 		EPAFace *ClosestFace = &E->Faces[ClosestFaceIdx];
 
 		// Get support point in the face normal direction

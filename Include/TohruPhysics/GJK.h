@@ -117,8 +117,8 @@ Vector3 GJKClosestPointOnSimplex(const GJKState *State);
 // ===========================================================================
 
 #define EPA_MAX_ITERATIONS 256
-#define EPA_MAX_FACES 256
-#define EPA_MAX_VERTICES 128
+#define EPA_MAX_FACES 2048
+#define EPA_MAX_VERTICES 512
 
 typedef struct {
 	Vector3 Normal;     // face normal (outward)
