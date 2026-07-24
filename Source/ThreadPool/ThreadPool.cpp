@@ -1,19 +1,16 @@
 /**
- * ThreadPool — work-stealing thread pool implementation.
+ * ThreadPool — mutex-based thread pool implementation.
  * TohruPhysics用のスレッドプール実装ね。
  *
- * Uses C++11 threading primitives via opaque handle storage.
+ * Uses a shared task queue protected by a mutex + condition variable.
+ * Workers and the calling thread all draw from the same queue, so no
+ * task can be duplicated or lost.  No lock-free work-stealing deque.
  *
  * DESIGN:
- * Worker threads spin on their own deque (LIFO pop), then steal from a
- * random victim (FIFO). When no work is available they sleep_for(100us)
- * to avoid busy-wasting CPU. The main thread calls ParFor/ParForSteal,
- * pushes tasks to all deques, then helps steal until completion. Workers
- * never exit between ParFor calls.
- *
- * No condition variable — sleep_for + work re-check avoids the lost-wakeup
- * race inherent in CV-based signalling. This is acceptable for a physics
- * engine where work comes in bursts per simulation step.
+ * Workers and the main thread share a single FIFO queue of task indices
+ * protected by a mutex.  The main thread pushes all tasks, then helps
+ * execute them alongside workers.  When the queue is empty and all
+ * tasks are completed, ParFor returns.
  *
  * Author: KleaSCM
  * Email: KleaSCM@gmail.com
@@ -21,133 +18,65 @@
 #include <TohruPhysics/ThreadPool.h>
 #include <TohruPhysics/Math.h>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <chrono>
 #include <cstdlib>
-#include <cstring>
 
 // Handle accessors — opaque → typed
+// 不透明ハンドル → 型付きポインタ
 static inline std::thread **ThreadPtr(ThreadPool *P, int I) {
 	return reinterpret_cast<std::thread **>(&P->ThreadData[I]);
-}
-
-// ---------------------------------------------------------------------------
-//  Atomic helpers (GCC builtins for C-compatible atomics)
-// ---------------------------------------------------------------------------
-
-static inline int64_t Load(volatile int64_t *P) {
-	return __atomic_load_n(P, __ATOMIC_ACQUIRE);
-}
-static inline void Store(volatile int64_t *P, int64_t V) {
-	__atomic_store_n(P, V, __ATOMIC_RELEASE);
-}
-static inline int64_t LoadR(volatile int64_t *P) {
-	return __atomic_load_n(P, __ATOMIC_RELAXED);
-}
-static inline void StoreR(volatile int64_t *P, int64_t V) {
-	__atomic_store_n(P, V, __ATOMIC_RELAXED);
-}
-static inline int CAS(volatile int64_t *P, int64_t E, int64_t D) {
-	return __atomic_compare_exchange_n(P, &E, D, false,
-	                                   __ATOMIC_RELEASE, __ATOMIC_RELAXED);
-}
-static inline int LoadInt(volatile int *P) {
-	return __atomic_load_n(P, __ATOMIC_ACQUIRE);
-}
-static inline void StoreInt(volatile int *P, int V) {
-	__atomic_store_n(P, V, __ATOMIC_RELEASE);
-}
-
-// ---------------------------------------------------------------------------
-//  Work-stealing deque (Chase-Lev lock-free deque)
-// ---------------------------------------------------------------------------
-
-static void DequeInit(WorkStealingDeque *DQ) {
-	StoreR(&DQ->Bottom, 0);
-	StoreR(&DQ->Top, 0);
-}
-
-// Owner pushes to bottom (LIFO). The deque buffer is a ring buffer
-// indexed by Bottom & (CAPACITY-1). No ABA problem because only one
-// thread pushes to a given deque.
-static void DequePushBottom(WorkStealingDeque *DQ, int Task) {
-	int64_t B = LoadR(&DQ->Bottom);
-	DQ->Buffer[B & (THREADPOOL_DEQUE_CAPACITY - 1)] = Task;
-	Store(&DQ->Bottom, B + 1);
-}
-
-// Owner pops from bottom (LIFO). Returns 1 on success.
-static int DequePopBottom(WorkStealingDeque *DQ, int *Out) {
-	int64_t B = LoadR(&DQ->Bottom) - 1;
-	StoreR(&DQ->Bottom, B);
-	int64_t T = Load(&DQ->Top);
-	if (T <= B) {
-		*Out = DQ->Buffer[B & (THREADPOOL_DEQUE_CAPACITY - 1)];
-		if (T == B) {
-			// Last item — race with stealers
-			if (!CAS(&DQ->Top, T, T + 1)) {
-				StoreR(&DQ->Bottom, B + 1);
-				return 0;
-			}
-		}
-		return 1;
-	}
-	StoreR(&DQ->Bottom, B + 1);
-	return 0;
-}
-
-// Thief steals from top (FIFO). Returns 1 on success.
-static int DequeSteal(WorkStealingDeque *DQ, int *Out) {
-	int64_t T = Load(&DQ->Top);
-	int64_t B = Load(&DQ->Bottom);
-	if (T >= B) return 0;
-	*Out = DQ->Buffer[T & (THREADPOOL_DEQUE_CAPACITY - 1)];
-	return CAS(&DQ->Top, T, T + 1);
 }
 
 // ---------------------------------------------------------------------------
 //  Worker entry point
 // ---------------------------------------------------------------------------
 
+// Each ParFor batch uses a shared context on the pool.  The workers read
+// the context fields after being notified.  The pool's mutex serialises
+// all access.
+// 各ParForバッチはプール上の共有コンテキストを使う。ワーカーは通知を受けて
+// コンテキストフィールドを読み取る。プールのミューテックスが全てのアクセスを
+// 直列化する。
+struct ParForCtx {
+	ThreadTaskFunc Func;
+	void          *Arg;
+	int            TaskCount;
+	int            TotalTasks;
+	int            NextTask;   // next unclaimed task index (0187)
+	int            Completed;  // count of completed tasks (0187)
+};
+
 static void WorkerMain(ThreadPool *Pool, int Ti) {
-	// Pseudo-random seed per thread
-	int Rnd = Ti * 7471969;
-
-	while (!LoadInt(&Pool->StopFlag)) {
-		// 1) Pop from own deque (LIFO — best locality)
+	(void)Ti;
+	while (true) {
 		int TaskIdx;
-		if (DequePopBottom(&Pool->Deques[Ti], &TaskIdx)) {
-			int64_t MyBatch = LoadR(&Pool->BatchId);
-			__atomic_add_fetch(&Pool->ActiveTasks, 1, __ATOMIC_RELAXED);
-			Pool->CurrentFunc(Pool->CurrentArg, Ti, TaskIdx);
-			// Only count if this task belongs to the current batch.
-			// If BatchId changed, this task was from a previous batch
-			// and was already counted — skip stale increment.
-			if (LoadR(&Pool->BatchId) == MyBatch)
-				__atomic_add_fetch(&Pool->TasksCompleted, 1, __ATOMIC_RELEASE);
-			__atomic_sub_fetch(&Pool->ActiveTasks, 1, __ATOMIC_RELEASE);
-			continue;
+		ParForCtx *MyCtx;
+		{
+			std::unique_lock<std::mutex> Lock(Pool->Mtx);
+			Pool->CV.wait(Lock, [Pool]{
+				return Pool->StopFlag ||
+				       (Pool->Ctx && Pool->Ctx->NextTask < Pool->Ctx->TotalTasks);
+			});
+			if (Pool->StopFlag) return;
+			// Capture the context pointer while under lock, then use
+			// the local for the rest of the batch.  This is safe even
+			// if the main thread later nulls Pool->Ctx.
+			// ロック中にコンテキストポインタをローカルに保存。メインスレッドが
+			// 後で Pool->Ctx を null にしても安全。
+			MyCtx = Pool->Ctx;
+			TaskIdx = MyCtx->NextTask++;
 		}
-
-		// 2) Steal from a random victim (FIFO — minimises contention)
-		Rnd = Rnd * 1103515245 + 12345;
-		int Victim = (unsigned int)Rnd % Pool->ThreadCount;
-		if (Victim == Ti)
-			Victim = (Victim + 1) % Pool->ThreadCount;
-
-		if (DequeSteal(&Pool->Deques[Victim], &TaskIdx)) {
-			int64_t MyBatch = LoadR(&Pool->BatchId);
-			__atomic_add_fetch(&Pool->ActiveTasks, 1, __ATOMIC_RELAXED);
-			Pool->CurrentFunc(Pool->CurrentArg, Ti, TaskIdx);
-			if (LoadR(&Pool->BatchId) == MyBatch)
-				__atomic_add_fetch(&Pool->TasksCompleted, 1, __ATOMIC_RELEASE);
-			__atomic_sub_fetch(&Pool->ActiveTasks, 1, __ATOMIC_RELEASE);
-			continue;
+		// Execute (outside lock so workers can run in parallel)
+		// 実行（ロック解除 — ワーカーは並列に実行できる）
+		MyCtx->Func(MyCtx->Arg, Ti, TaskIdx);
+		{
+			std::lock_guard<std::mutex> Lock(Pool->Mtx);
+			MyCtx->Completed++;
+			if (MyCtx->Completed >= MyCtx->TotalTasks)
+				Pool->CV.notify_all(); // wake main (may be waiting)
 		}
-
-		// 3) No work — brief sleep to avoid busy-waste
-		//    100µs is enough to yield the core without adding perceptible
-		//    latency (a physics tick is typically 8–16 ms).
-		std::this_thread::sleep_for(std::chrono::microseconds(100));
 	}
 }
 
@@ -156,23 +85,25 @@ static void WorkerMain(ThreadPool *Pool, int Ti) {
 // ---------------------------------------------------------------------------
 
 void ThreadPoolInit(ThreadPool *Pool, int ThreadCount) {
-	memset(Pool, 0, sizeof(*Pool));
+	// Zero C-style members; C++ members (Mtx, CV) are already constructed
+	// by their default initialisers when the Pool was declared.
+	// Cスタイルメンバーをゼロ初期化；C++メンバーは宣言時のデフォルト初期化済み。
+	Pool->ThreadCount = 0;
+	Pool->StopFlag    = 0;
+	Pool->Ctx         = nullptr;
+	for (int I = 0; I < THREADPOOL_MAX_THREADS; I++)
+		Pool->ThreadData[I] = nullptr;
+
 	if (ThreadCount < 1) ThreadCount = 1;
 	if (ThreadCount > THREADPOOL_MAX_THREADS)
 		ThreadCount = THREADPOOL_MAX_THREADS;
 	Pool->ThreadCount = ThreadCount;
-
-	for (int I = 0; I < ThreadCount; I++)
-		DequeInit(&Pool->Deques[I]);
 
 	// Spawn threads
 	for (int I = 0; I < ThreadCount; I++) {
 		auto *T = new std::thread(WorkerMain, Pool, I);
 		*ThreadPtr(Pool, I) = T;
 	}
-
-	// Wait for all threads to reach the loop body
-	// (No explicit barrier needed — threads start immediately)
 }
 
 // ---------------------------------------------------------------------------
@@ -182,9 +113,12 @@ void ThreadPoolInit(ThreadPool *Pool, int ThreadCount) {
 void ThreadPoolDestroy(ThreadPool *Pool) {
 	if (!Pool || Pool->ThreadCount == 0) return;
 
-	StoreInt(&Pool->StopFlag, 1);
+	{
+		std::lock_guard<std::mutex> Lock(Pool->Mtx);
+		Pool->StopFlag = 1;
+	}
+	Pool->CV.notify_all();
 
-	// Workers will wake from sleep_for and see StopFlag
 	for (int I = 0; I < Pool->ThreadCount; I++) {
 		auto *T = *ThreadPtr(Pool, I);
 		if (T && T->joinable()) T->join();
@@ -197,7 +131,7 @@ void ThreadPoolDestroy(ThreadPool *Pool) {
 }
 
 // ---------------------------------------------------------------------------
-//  ParFor — simple chunked distribution
+//  ParFor — shared-queue parallel-for
 // ---------------------------------------------------------------------------
 
 void ThreadPoolParFor(ThreadPool *Pool,
@@ -206,56 +140,61 @@ void ThreadPoolParFor(ThreadPool *Pool,
                       void *Arg) {
 	if (TaskCount <= 0 || !Pool || Pool->ThreadCount == 0) return;
 
-	int NT = Pool->ThreadCount;
-	int Chunk = (TaskCount + NT - 1) / NT;
+	// Set up context on the pool (worker threads will read it)
+	// プール上にコンテキストを設定（ワーカースレッドが読み取る）
+	ParForCtx Ctx;
+	Ctx.Func       = Func;
+	Ctx.Arg        = Arg;
+	Ctx.TaskCount  = TaskCount;
+	Ctx.TotalTasks = TaskCount;
+	Ctx.NextTask   = 0;
+	Ctx.Completed  = 0;
 
-	// CRITICAL: Set state BEFORE pushing tasks. Workers may wake from
-	// sleep_for at any time and will read CurrentFunc/CurrentArg and
-	// increment TasksCompleted. If we set these after pushing, a worker
-	// could consume a task using stale state and the increment would be
-	// lost when TasksCompleted is reset.
-	// BatchId prevents stale increments: workers read BatchId at the
-	// start of each iteration; if it changes during execution, the
-	// increment is for a previous batch and is skipped.
-	__atomic_add_fetch(&Pool->BatchId, 1, __ATOMIC_RELEASE);
-	Pool->CurrentFunc = Func;
-	Pool->CurrentArg = Arg;
-	Store(&Pool->TasksCompleted, 0);
-
-	// Push chunked tasks to each deque
-	for (int T = 0; T < NT; T++) {
-		int S = T * Chunk;
-		int E = S + Chunk;
-		if (E > TaskCount) E = TaskCount;
-		for (int I = S; I < E; I++)
-			DequePushBottom(&Pool->Deques[T], I);
+	{
+		std::lock_guard<std::mutex> Lock(Pool->Mtx);
+		Pool->Ctx = &Ctx;
 	}
+	Pool->CV.notify_all();  // wake workers — they'll read Ctx under the mutex
 
-	// Main thread helps steal until all tasks are done.
-	// Workers wake from sleep_for (within 100 µs) and find tasks.
-	while (Load(&Pool->TasksCompleted) < TaskCount) {
-		int TaskIdx, Stolen = 0;
-		for (int T = 0; T < NT && !Stolen; T++) {
-			if (DequeSteal(&Pool->Deques[T], &TaskIdx)) {
-				Func(Arg, NT, TaskIdx);
-				__atomic_add_fetch(&Pool->TasksCompleted, 1,
-				                   __ATOMIC_RELEASE);
-				Stolen = 1;
+	// Main thread also participates: grab tasks from the queue
+	// メインスレッドも参加：キューからタスクを取得
+	while (true) {
+		int TaskIdx;
+		{
+			std::unique_lock<std::mutex> Lock(Pool->Mtx);
+			// If all done, break
+			if (Ctx.Completed >= TaskCount) break;
+			// If queue is empty AND all tasks have been claimed, wait
+			if (Ctx.NextTask >= TaskCount) {
+				Pool->CV.wait(Lock, [&Ctx, TaskCount]{
+					return Ctx.Completed >= TaskCount;
+				});
+				break;
 			}
+			// Claim next task
+			TaskIdx = Ctx.NextTask++;
 		}
-		if (!Stolen)
-			std::this_thread::yield();
+		// Execute (outside lock)
+		Func(Arg, Pool->ThreadCount, TaskIdx);
+		{
+			std::lock_guard<std::mutex> Lock(Pool->Mtx);
+			Ctx.Completed++;
+		}
 	}
 
-	// Drain: wait for all workers to finish their current tasks.
-	// This ensures user-visible side effects (e.g., Sum accumulators)
-	// are fully committed before ParFor returns.
-	while (__atomic_load_n(&Pool->ActiveTasks, __ATOMIC_ACQUIRE) > 0)
-		std::this_thread::yield();
+	// All tasks complete — ensure workers exit the batch
+	// 全タスク完了 — ワーカーがこのバッチを抜けるのを確認
+	{
+		std::lock_guard<std::mutex> Lock(Pool->Mtx);
+		Pool->Ctx = nullptr;
+	}
+	// No need to notify — workers will recheck Ctx and sleep
+	// 通知不要 — ワーカーはCtxを再チェックして待機
 }
 
 // ---------------------------------------------------------------------------
-//  ParForSteal — fine-grained work-stealing
+//  ParForSteal — fine-grained work-stealing (not supported in mutex version)
+//  Falls back to regular ParFor.
 // ---------------------------------------------------------------------------
 
 void ThreadPoolParForSteal(ThreadPool *Pool,
@@ -263,44 +202,6 @@ void ThreadPoolParForSteal(ThreadPool *Pool,
                            ThreadTaskFunc Func,
                            void *Arg,
                            int ChunkSize) {
-	if (TaskCount <= 0 || !Pool || Pool->ThreadCount == 0) return;
-	if (ChunkSize < 1) ChunkSize = 1;
-
-	int NT = Pool->ThreadCount;
-
-	// Set state BEFORE pushing (see ParFor for rationale)
-	Pool->CurrentFunc = Func;
-	Pool->CurrentArg = Arg;
-	Store(&Pool->TasksCompleted, 0);
-	__atomic_add_fetch(&Pool->BatchId, 1, __ATOMIC_RELEASE);
-
-	// Spread fine-grained chunks across deques for work-stealing.
-	// Round-robin distribution ensures no deque gets all the tasks.
-	for (int T = 0; T < NT; T++) {
-		for (int I = T * ChunkSize; I < TaskCount; I += NT * ChunkSize) {
-			int E = I + ChunkSize;
-			if (E > TaskCount) E = TaskCount;
-			for (int J = I; J < E; J++)
-				DequePushBottom(&Pool->Deques[T], J);
-		}
-	}
-
-	// Main thread helps steal until all tasks are done
-	while (Load(&Pool->TasksCompleted) < TaskCount) {
-		int TaskIdx, Stolen = 0;
-		for (int T = 0; T < NT && !Stolen; T++) {
-			if (DequeSteal(&Pool->Deques[T], &TaskIdx)) {
-				Func(Arg, NT, TaskIdx);
-				__atomic_add_fetch(&Pool->TasksCompleted, 1,
-				                   __ATOMIC_RELEASE);
-				Stolen = 1;
-			}
-		}
-		if (!Stolen)
-			std::this_thread::yield();
-	}
-
-	// Drain: wait for all workers to finish their current tasks.
-	while (__atomic_load_n(&Pool->ActiveTasks, __ATOMIC_ACQUIRE) > 0)
-		std::this_thread::yield();
+	(void)ChunkSize;
+	ThreadPoolParFor(Pool, TaskCount, Func, Arg);
 }
